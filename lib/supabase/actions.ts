@@ -684,18 +684,18 @@ export async function handleWebhook(body: {
   const { error } = await admin.from("subscriptions").insert({
     business_id,
     billing_interval: planInfo.label as any,
-    status:           "Active",
+    status:           "Active" as const,
     amount_tzs:       body.data.amount,
     provider:         "pesapal",
     provider_reference: body.data.tx_ref,
     starts_at:        now.toISOString(),
     ends_at:          endsAt.toISOString(),
-  });
+  } as any);
 
   if (error) return { ok: false, error: error.message };
 
   await admin.from("businesses")
-    .update({ trial_ends_at: endsAt.toISOString() })
+    .update({ trial_ends_at: endsAt.toISOString() } as any)
     .eq("id", business_id);
 
   revalidatePath("/profile");

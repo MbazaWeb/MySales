@@ -71,7 +71,7 @@ export default function ProfileClient({
     Object.entries(form).forEach(([k, v]) => fd.append(k, v));
     start(async () => {
       const res = await addBranchWithStaff(fd);
-      if ("error" in res) { setError(res.error); return; }
+      if ("error" in res) { setError(res.error ?? null); return; }
       // Optimistic update
       setBranches(bs => [...bs, res.branch as Branch]);
       setShowModal(false);
