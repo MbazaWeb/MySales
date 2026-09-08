@@ -1,0 +1,19 @@
+-- DukaVerse — Migration v3
+-- No schema changes needed for branch staff accounts.
+-- The existing tables (staff, branches) already support this.
+--
+-- What changed in the app:
+-- addBranchWithStaff() uses supabase.auth.admin.createUser() via the service role key.
+-- This requires SUPABASE_SERVICE_ROLE_KEY in your environment.
+--
+-- To get your service role key:
+--   Supabase Dashboard → Settings → API → service_role (secret key)
+--   Add it to .env.local as: SUPABASE_SERVICE_ROLE_KEY=your-key-here
+--
+-- Optional: ensure email confirmations are disabled so staff can log in immediately
+-- Go to: Supabase → Authentication → Providers → Email → disable "Confirm email"
+-- (The app passes email_confirm: true in createUser, but the project setting must allow it)
+
+-- Verify the staff table has is_active column (from v1 schema):
+-- select column_name from information_schema.columns
+-- where table_name = 'staff' and column_name = 'is_active';

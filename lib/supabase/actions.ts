@@ -447,3 +447,120 @@ export async function inviteStaff(formData: FormData) {
   revalidatePath("/profile");
   return { success: true };
 }
+
+// ── Branch + staff user creation ──────────────────────────────────────────────
+
+export async function addBranchWithStaff(formData: FormData) {
+  const { createAdminClient } = await import("./admin");
+  const supabase      = await createClient();
+  const adminClient   = createAdminClient();
+
+  // Verify caller is authenticated
+  const { data: { user: caller } } = await supabase.auth.getUser();
+  if (!caller) return { error: "Authentication required." };
+
+  const businessId   = formData.get("business_id")   as string;
+  const branchName   = formData.get("branch_name")   as string;
+  const location     = formData.get("location")      as string;
+  const staffName    = formData.get("staff_name")    as string;
+  const staffEmail   = formData.get("staff_email")   as string;
+  const staffPass    = formData.get("staff_password") as string;
+  const staffRole    = (formData.get("staff_role")   as string) || "Manager";
+
+  // 1. Verify caller owns this business
+  const { data: biz } = await supabase
+    .from("businesses")
+    .select("id, name")
+    .eq("id", businessId)
+    .eq("owner_id", caller.id)
+    .single();
+  if (!biz) return { error: "Business not found or you do not own it." };
+
+  // 2. Create branch
+  const { data: branch, error: branchErr } = await supabase
+    .from("branches")
+    .insert({ business_id: businessId, name: branchName, location })
+    .select()
+    .single();
+  if (branchErr) return { error: branchErr.message };
+
+  // 3. Create auth user via admin API (bypasses email confirmation)
+  const { data: newUser, error: userErr } = await adminClient.auth.admin.createUser({
+    email:              staffEmail,
+    password:           staffPass,
+    email_confirm:      true,       // auto-confirm so they can log in immediately
+    user_metadata: {
+      full_name:     staffName,
+      role:          staffRole,
+      branch_id:     branch.id,
+      business_id:   businessId,
+      business_name: biz.name,
+    },
+  });
+  if (userErr) {
+    // Roll back branch
+    await supabase.from("branches").delete().eq("id", branch.id);
+    return { error: userErr.message };
+  }
+
+  // 4. Create staff row linking new user to this branch only
+  const { error: staffErr } = await adminClient.from("staff").insert({
+    business_id: businessId,
+    user_id:     newUser.user.id,
+    name:        staffName,
+    role:        staffRole as any,
+    branch_id:   branch.id,   // scoped to this branch only
+  });
+  if (staffErr) {
+    // Roll back user + branch
+    await adminClient.auth.admin.deleteUser(newUser.user.id);
+    await supabase.from("branches").delete().eq("id", branch.id);
+    return { error: staffErr.message };
+  }
+
+  revalidatePath("/profile");
+  return {
+    success:  true as const,
+    branch,
+    credentials: {
+      name:     staffName,
+      email:    staffEmail,
+      password: staffPass,
+      role:     staffRole,
+    },
+  };
+}
+
+export async function getBusinessDataWithStaff(userId: string) {
+  const supabase = await createClient();
+
+  const { data: businesses } = await supabase
+    .from("businesses")
+    .select("id, name, type")
+    .eq("owner_id", userId)
+    .order("created_at");
+
+  if (!businesses || businesses.length === 0) {
+    return { businesses: [], branches: [], staff: [] };
+  }
+
+  const ids = businesses.map(b => b.id);
+
+  const { data: branches } = await supabase
+    .from("branches")
+    .select("id, name, location, business_id, is_active")
+    .in("business_id", ids)
+    .order("created_at");
+
+  const { data: staffList } = await supabase
+    .from("staff")
+    .select("id, name, role, branch_id, business_id, is_active, user_id")
+    .in("business_id", ids)
+    .order("name");
+
+  return {
+    businesses: businesses ?? [],
+    branches:   branches   ?? [],
+    staff:      staffList  ?? [],
+  };
+}
