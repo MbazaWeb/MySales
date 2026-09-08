@@ -1,5 +1,6 @@
 "use client";
 import { T, useTranslation } from "@/app/components/LanguageProvider";
+import BulkProductUpload from "./BulkProductUpload";
 
 import { useMemo, useState, useTransition } from "react";
 import { Search, Plus, X, Package, Loader2, AlertCircle, ChevronDown, Pencil, Trash2 } from "lucide-react";
@@ -33,6 +34,8 @@ export default function InventoryClient({
 }) {
   const { t: translateUi } = useTranslation();
   const [products, setProducts] = useState<Product[]>(initialProducts);
+  const [showUpload, setShowUpload] = useState(false);
+  const [importedCount, setImportedCount] = useState<number | null>(null);
   const [q, setQ]               = useState("");
   const [filter, setFilter]     = useState("All");
   const [modal, setModal]       = useState<Modal>(null);
@@ -168,9 +171,23 @@ export default function InventoryClient({
 
   return (
     <>
+      {showUpload && <BulkProductUpload branchId={branchId} products={products} onClose={() => setShowUpload(false)} onImported={added => {
+        setProducts(current => [...current, ...added].sort((a, b) => a.name.localeCompare(b.name)));
+        setSelectedId(current => current || added[0]?.id || "");
+        setImportedCount(added.length);
+        setQ("");
+        setFilter("All");
+        setShowUpload(false);
+      }} />}
+      {importedCount !== null && <p role="status" className="rounded-lg p-3 mb-4 text-sm" style={{ background: "var(--success-bg)", color: "var(--success)" }}>
+        {importedCount} {translateUi("products imported successfully", "bidhaa zimepakiwa kwa mafanikio")}
+      </p>}
       {/* Action bar */}
       <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
+          <button type="button" className="btn-ghost" onClick={() => { setImportedCount(null); setShowUpload(true); }}>
+            <Plus size={15} /> {translateUi("Upload Excel", "Pakia Excel")}
+          </button>
           <button className="btn-ghost" onClick={() => { setModal("new-product"); setError(null); }}>
             <Plus size={15}/> <T text={"New product"} /> </button>
           <button className="btn-gold" onClick={() => { setModal("add-stock"); setError(null); }}>

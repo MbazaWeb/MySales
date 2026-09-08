@@ -23,7 +23,7 @@ function load(relative) {
     fileName: filename,
   }).outputText;
   const localRequire = (specifier) => {
-    if (specifier.includes("supabase/client-actions") || specifier.includes("supabase/server-actions")) return {};
+    if (specifier.includes("supabase/client-actions") || specifier.includes("supabase/server-actions") || specifier.includes("supabase/bulk-products")) return {};
     if (specifier === "next/navigation") return { usePathname: () => "/dashboard", useRouter: () => ({}) };
     if (specifier === "next/link") return ({ children, prefetch, ...props }) => React.createElement("a", props, children);
     if (specifier.startsWith(".") || specifier.startsWith("@/")) {
