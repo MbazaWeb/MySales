@@ -8,9 +8,6 @@ import {
 } from "lucide-react";
 import { useState, useTransition, useCallback, memo } from "react";
 import { signOut } from "@/lib/supabase/client-actions";
-import { Header } from "./Header";
-import { Header } from "./Header";
-import { Header } from "./Header";
 
 const links = [
   { href: "/dashboard", label: "Dashboard",  icon: LayoutDashboard, shortLabel: "Home"  },
