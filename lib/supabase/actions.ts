@@ -256,9 +256,12 @@ export async function getProducts(branchId: string) {
 }
 
 export async function createProduct(formData: FormData) {
-  const supabase = await createClient();
-  const branchId = formData.get("branch_id") as string;
+  const supabase    = await createClient();
+  const branchId    = formData.get("branch_id")    as string;
+  const costPrice   = Number(formData.get("cost_price"));
+  const sellingPrice = Number(formData.get("selling_price"));
 
+<<<<<<< HEAD
   const { data: product, error } = await supabase
     .from("products")
     .insert({
@@ -272,6 +275,19 @@ export async function createProduct(formData: FormData) {
     })
     .select()
     .single();
+=======
+  const { error } = await supabase.from("products").insert({
+    branch_id:     branchId,
+    name:          formData.get("name")     as string,
+    category:      formData.get("category") as string,
+    stock:         Number(formData.get("stock")),
+    unit:          formData.get("unit")     as string,
+    cost_price:    costPrice,
+    selling_price: sellingPrice,
+    price:         sellingPrice,   // keep price = selling_price for RPC compat
+    reorder:       Number(formData.get("reorder")),
+  } as any);
+>>>>>>> a80a9b0 (feat: cost/selling price, profit tracking, customer fields on sales, excel table inventory)
   if (error) return { error: error.message };
   revalidatePath("/inventory");
   return { success: true as const, product };
@@ -317,11 +333,13 @@ export async function getSales(branchId: string) {
 }
 
 export async function recordSale(formData: FormData) {
-  const supabase    = await createClient();
-  const productId   = formData.get("product_id")   as string;
-  const qty         = Number(formData.get("qty"));
-  const payment     = formData.get("payment")       as string;
-  const status      = payment === "Credit" ? "Not paid" : "Paid";
+  const supabase      = await createClient();
+  const productId     = formData.get("product_id")     as string;
+  const qty           = Number(formData.get("qty"));
+  const payment       = formData.get("payment")         as string;
+  const customerName  = (formData.get("customer_name")  as string) || null;
+  const customerPhone = (formData.get("customer_phone") as string) || null;
+  const status        = payment === "Credit" ? "Not paid" : "Paid";
 
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return { error: "Authentication required." };
@@ -330,11 +348,13 @@ export async function recordSale(formData: FormData) {
   }
 
   const { error: saleErr } = await supabase.rpc("record_sale", {
-    p_product_id: productId,
-    p_qty: qty,
-    p_payment: payment,
-    p_status: status as "Paid" | "Not paid",
-  });
+    p_product_id:     productId,
+    p_qty:            qty,
+    p_payment:        payment,
+    p_status:         status as "Paid" | "Not paid",
+    p_customer_name:  customerName,
+    p_customer_phone: customerPhone,
+  } as any);
   if (saleErr) return { error: saleErr.message };
 
   revalidatePath("/sales");

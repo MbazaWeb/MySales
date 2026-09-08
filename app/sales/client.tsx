@@ -1,17 +1,15 @@
 "use client";
 import { useMemo, useState, useTransition } from "react";
-import { Plus, Search, X, Loader2, AlertCircle } from "lucide-react";
+import { Plus, Search, X, Loader2, AlertCircle, User, Phone } from "lucide-react";
 import { recordSale } from "@/lib/supabase/actions";
-import type { Database } from "@/lib/supabase/types";
-
-type Sale    = Database["public"]["Tables"]["sales"]["Row"];
-type Product = Database["public"]["Tables"]["products"]["Row"];
+import type { Sale, Product } from "@/lib/supabase/types";
 
 function money(n: number) { return `TZS ${n.toLocaleString("en-TZ")}`; }
-function timeAgo(iso: string) {
-  const d = new Date(iso);
-  return d.toLocaleTimeString("en-TZ", { hour: "2-digit", minute: "2-digit" });
+function fmt(iso: string) {
+  return new Date(iso).toLocaleTimeString("en-TZ", { hour: "2-digit", minute: "2-digit" });
 }
+
+const MOBILE_PAYMENTS = ["M-Pesa", "Airtel Money", "Mixx by Yas", "Bank Transfer", "Tigopesa"];
 
 export default function SalesClient({
   initialSales, products, branchId,
@@ -20,17 +18,23 @@ export default function SalesClient({
   products:     Product[];
   branchId:     string;
 }) {
-  const [sales, setSales]       = useState<Sale[]>(initialSales);
-  const [show, setShow]         = useState(false);
-  const [q, setQ]               = useState("");
+  const [sales, setSales]         = useState<Sale[]>(initialSales);
+  const [show, setShow]           = useState(false);
+  const [q, setQ]                 = useState("");
   const [productId, setProductId] = useState(products[0]?.id ?? "");
-  const [qty, setQty]           = useState(1);
-  const [payment, setPayment]   = useState("Cash");
-  const [error, setError]       = useState<string | null>(null);
-  const [pending, start]        = useTransition();
+  const [qty, setQty]             = useState(1);
+  const [payment, setPayment]     = useState("Cash");
+  const [custName, setCustName]   = useState("");
+  const [custPhone, setCustPhone] = useState("");
+  const [error, setError]         = useState<string | null>(null);
+  const [pending, start]          = useTransition();
 
-  const selectedProduct = products.find(p => p.id === productId);
-  const lineTotal = (selectedProduct?.price ?? 0) * qty;
+  const selectedProduct   = products.find(p => p.id === productId);
+  const sellingPrice      = selectedProduct?.selling_price ?? selectedProduct?.price ?? 0;
+  const costPrice         = selectedProduct?.cost_price ?? 0;
+  const lineTotal         = sellingPrice * qty;
+  const lineProfit        = (sellingPrice - costPrice) * qty;
+  const needsCustomer     = MOBILE_PAYMENTS.includes(payment);
 
   const filtered = useMemo(() =>
     sales.filter(s => s.product_name.toLowerCase().includes(q.toLowerCase())),
@@ -40,54 +44,78 @@ export default function SalesClient({
   function handleSave(e: React.FormEvent) {
     e.preventDefault();
     if (!selectedProduct) return;
+    if (needsCustomer && !custName.trim()) {
+      setError("Customer name is required for mobile payments.");
+      return;
+    }
     setError(null);
     const fd = new FormData();
-    fd.append("product_id",   productId);
-    fd.append("qty",          String(qty));
-    fd.append("payment",      payment);
+    fd.append("product_id",     productId);
+    fd.append("qty",            String(qty));
+    fd.append("payment",        payment);
+    fd.append("customer_name",  custName.trim());
+    fd.append("customer_phone", custPhone.trim());
     start(async () => {
       const res = await recordSale(fd);
       if ("error" in res && res.error) { setError(res.error); return; }
-      // Optimistic prepend
       const optimistic: Sale = {
-        id:           crypto.randomUUID(),
-        branch_id:    branchId,
-        product_id:   productId,
-        product_name: selectedProduct.name,
+        id:             crypto.randomUUID(),
+        branch_id:      branchId,
+        product_id:     productId,
+        product_name:   selectedProduct.name,
         qty,
-        unit_price:   selectedProduct.price,
-        total:        lineTotal,
+        unit_price:     sellingPrice,
+        cost_price:     costPrice,
+        total:          lineTotal,
+        profit:         lineProfit,
         payment,
-        status:       payment === "Credit" ? "Not paid" : "Paid",
-        sold_by:      null,
-        created_at:   new Date().toISOString(),
+        status:         payment === "Credit" ? "Not paid" : "Paid",
+        customer_name:  custName.trim() || null,
+        customer_phone: custPhone.trim() || null,
+        sold_by:        null,
+        created_at:     new Date().toISOString(),
       };
       setSales(s => [optimistic, ...s]);
       setShow(false);
       setQty(1);
+      setCustName("");
+      setCustPhone("");
     });
   }
 
-  const action = (
-    <button className="btn-gold" onClick={() => { setShow(true); setError(null); }}>
-      <Plus size={16} /> New sale
-    </button>
-  );
+  const totalRevenue = sales.reduce((a, s) => a + s.total, 0);
+  const totalProfit  = sales.reduce((a, s) => a + (s.profit ?? 0), 0);
 
   return (
     <>
-      <div className="mb-1 flex justify-end">{action}</div>
+      {/* Header action */}
+      <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+        {/* Summary pills */}
+        <div className="flex gap-3">
+          <div className="rounded-lg px-4 py-2" style={{ background: "var(--surface)", border: "1px solid var(--border)" }}>
+            <p className="text-xs" style={{ color: "var(--text-muted)" }}>Revenue</p>
+            <p className="font-bold text-sm">{money(totalRevenue)}</p>
+          </div>
+          <div className="rounded-lg px-4 py-2" style={{ background: "var(--success-bg)", border: "1px solid #BBF7D0" }}>
+            <p className="text-xs" style={{ color: "var(--success)" }}>Profit</p>
+            <p className="font-bold text-sm" style={{ color: "var(--success)" }}>{money(totalProfit)}</p>
+          </div>
+        </div>
+        <button className="btn-gold" onClick={() => { setShow(true); setError(null); }}>
+          <Plus size={16} /> New sale
+        </button>
+      </div>
 
       {/* Search */}
       <div className="mb-5 flex items-center gap-3 rounded-lg px-4"
         style={{ background: "var(--surface)", border: "1px solid var(--border)" }}>
         <Search size={17} style={{ color: "var(--text-muted)" }} />
         <input value={q} onChange={e => setQ(e.target.value)}
-          placeholder="Search by product…"
+          placeholder="Search by product or customer…"
           className="h-11 w-full outline-none bg-transparent text-sm" />
       </div>
 
-      {/* Table */}
+      {/* Sales table */}
       <div className="dv-card overflow-hidden p-0">
         {sales.length === 0 ? (
           <div className="py-16 text-center" style={{ color: "var(--text-muted)" }}>
@@ -96,33 +124,61 @@ export default function SalesClient({
           </div>
         ) : (
           <div className="overflow-x-auto">
-            <table className="dv-table">
+            <table className="dv-table" style={{ minWidth: "860px" }}>
               <thead>
                 <tr>
-                  <th>Receipt</th>
+                  <th>#</th>
                   <th>Product</th>
-                  <th>Qty</th>
+                  <th style={{ textAlign: "right" }}>Qty</th>
+                  <th style={{ textAlign: "right" }}>Unit price</th>
                   <th>Payment</th>
+                  <th>Customer</th>
                   <th>Time</th>
                   <th>Status</th>
                   <th style={{ textAlign: "right" }}>Total</th>
+                  <th style={{ textAlign: "right" }}>Profit</th>
                 </tr>
               </thead>
               <tbody>
                 {filtered.map(s => (
                   <tr key={s.id}>
-                    <td style={{ color: "var(--text-muted)", fontSize: "0.75rem" }}>#{s.id.slice(0, 8)}</td>
+                    <td style={{ color: "var(--text-muted)", fontSize: "0.7rem" }}>
+                      {s.id.slice(0, 6).toUpperCase()}
+                    </td>
                     <td className="font-semibold">{s.product_name}</td>
-                    <td>{s.qty} units</td>
+                    <td style={{ textAlign: "right" }}>{s.qty}</td>
+                    <td style={{ textAlign: "right" }}>{money(s.unit_price)}</td>
                     <td>{s.payment}</td>
-                    <td style={{ color: "var(--text-muted)" }}>{timeAgo(s.created_at)}</td>
-                    <td><span className={s.status === "Not paid" ? "badge-warn" : "badge-ok"}>{s.status}</span></td>
+                    <td>
+                      {s.customer_name ? (
+                        <div>
+                          <span className="block text-sm font-medium">{s.customer_name}</span>
+                          {s.customer_phone && (
+                            <span className="text-xs" style={{ color: "var(--text-muted)" }}>{s.customer_phone}</span>
+                          )}
+                        </div>
+                      ) : (
+                        <span style={{ color: "var(--text-muted)" }}>—</span>
+                      )}
+                    </td>
+                    <td style={{ color: "var(--text-muted)", fontSize: "0.8rem" }}>{fmt(s.created_at)}</td>
+                    <td>
+                      <span className={s.status === "Not paid" ? "badge-warn" : "badge-ok"}>{s.status}</span>
+                    </td>
                     <td style={{ textAlign: "right", fontWeight: 600 }}>{money(s.total)}</td>
+                    <td style={{ textAlign: "right" }}>
+                      {s.profit != null ? (
+                        <span className="font-semibold text-sm"
+                          style={{ color: s.profit >= 0 ? "var(--success)" : "var(--danger)" }}>
+                          {s.profit >= 0 ? "+" : ""}{money(s.profit)}
+                        </span>
+                      ) : <span style={{ color: "var(--text-muted)" }}>—</span>}
+                    </td>
                   </tr>
                 ))}
               </tbody>
             </table>
-            {filtered.length === 0 && (
+            {filtered.length === 0 && q && (
               <div className="py-10 text-center text-sm" style={{ color: "var(--text-muted)" }}>
                 No transactions match your search.
               </div>
@@ -131,7 +187,7 @@ export default function SalesClient({
         )}
       </div>
 
-      {/* New sale modal */}
+      {/* ── New sale modal ── */}
       {show && (
         <div className="modal-overlay" onClick={() => setShow(false)}>
           <div className="modal-sheet" onClick={e => e.stopPropagation()}>
@@ -158,35 +214,104 @@ export default function SalesClient({
             )}
 
             <form onSubmit={handleSave} className="space-y-4">
+              {/* Product */}
               <div>
                 <label className="form-label">Product</label>
-                <select className="dv-select" value={productId} onChange={e => setProductId(e.target.value)}
+                <select className="dv-select" value={productId}
+                  onChange={e => setProductId(e.target.value)}
                   disabled={products.length === 0}>
                   {products.map(p => (
-                    <option key={p.id} value={p.id}>{p.name} — {money(p.price)}</option>
+                    <option key={p.id} value={p.id}>
+                      {p.name} — {money(p.selling_price ?? p.price)}
+                    </option>
                   ))}
                 </select>
               </div>
+
+              {/* Qty */}
               <div>
                 <label className="form-label">Quantity</label>
-                <input type="number" min="1" className="dv-input" value={qty}
+                <input type="number" min="1" required className="dv-input" value={qty}
                   onChange={e => setQty(+e.target.value)} />
               </div>
+
+              {/* Payment */}
               <div>
                 <label className="form-label">Payment method</label>
-                <select className="dv-select" value={payment} onChange={e => setPayment(e.target.value)}>
+                <select className="dv-select" value={payment}
+                  onChange={e => { setPayment(e.target.value); setCustName(""); setCustPhone(""); }}>
                   <option>Cash</option>
-                  <option>M-Pesa</option>
-                  <option>Airtel Money</option>
-                  <option>Mixx by Yas</option>
+                  {MOBILE_PAYMENTS.map(m => <option key={m}>{m}</option>)}
                   <option>Credit</option>
                 </select>
               </div>
-              <div className="flex justify-between items-center rounded-lg px-4 py-3"
+
+              {/* Customer info — shown for mobile payments */}
+              {needsCustomer && (
+                <div className="rounded-lg p-4 space-y-3"
+                  style={{ background: "var(--background)", border: "1px solid var(--gold-300)" }}>
+                  <p className="text-xs font-semibold" style={{ color: "var(--gold-500)" }}>
+                    Customer details required for {payment}
+                  </p>
+                  <div>
+                    <label className="form-label flex items-center gap-1">
+                      <User size={13} /> Customer name <span style={{ color: "var(--danger)" }}>*</span>
+                    </label>
+                    <input required className="dv-input" placeholder="Full name"
+                      value={custName} onChange={e => setCustName(e.target.value)} />
+                  </div>
+                  <div>
+                    <label className="form-label flex items-center gap-1">
+                      <Phone size={13} /> Phone number <span style={{ color: "var(--text-muted)", fontWeight: 400 }}>(optional)</span>
+                    </label>
+                    <input className="dv-input" placeholder="+255 7••  •••  •••"
+                      value={custPhone} onChange={e => setCustPhone(e.target.value)} />
+                  </div>
+                </div>
+              )}
+
+              {/* Also show for Credit */}
+              {payment === "Credit" && (
+                <div className="rounded-lg p-4 space-y-3"
+                  style={{ background: "var(--warning-bg)", border: "1px solid #FDE68A" }}>
+                  <p className="text-xs font-semibold" style={{ color: "var(--warning)" }}>
+                    Credit sale — record customer for follow-up
+                  </p>
+                  <div>
+                    <label className="form-label flex items-center gap-1">
+                      <User size={13} /> Customer name
+                    </label>
+                    <input className="dv-input" placeholder="Who owes this payment?"
+                      value={custName} onChange={e => setCustName(e.target.value)} />
+                  </div>
+                  <div>
+                    <label className="form-label flex items-center gap-1">
+                      <Phone size={13} /> Phone number
+                    </label>
+                    <input className="dv-input" placeholder="+255 7••  •••  •••"
+                      value={custPhone} onChange={e => setCustPhone(e.target.value)} />
+                  </div>
+                </div>
+              )}
+
+              {/* Total + profit preview */}
+              <div className="rounded-lg px-4 py-3"
                 style={{ background: "var(--gold-100)", border: "1px solid var(--gold-300)" }}>
-                <span className="text-sm font-medium" style={{ color: "var(--navy-700)" }}>Total</span>
-                <span className="font-bold text-lg" style={{ color: "var(--navy-700)" }}>{money(lineTotal)}</span>
+                <div className="flex justify-between items-center">
+                  <span className="text-sm font-medium" style={{ color: "var(--navy-700)" }}>Total</span>
+                  <span className="font-bold text-lg" style={{ color: "var(--navy-700)" }}>{money(lineTotal)}</span>
+                </div>
+                {costPrice > 0 && (
+                  <div className="flex justify-between items-center mt-1">
+                    <span className="text-xs" style={{ color: "var(--text-muted)" }}>Profit on this sale</span>
+                    <span className="text-sm font-semibold"
+                      style={{ color: lineProfit >= 0 ? "var(--success)" : "var(--danger)" }}>
+                      {lineProfit >= 0 ? "+" : ""}{money(lineProfit)}
+                    </span>
+                  </div>
+                )}
               </div>
+
               <button type="submit" disabled={pending || products.length === 0}
                 className="btn-gold w-full justify-center py-3">
                 {pending ? <Loader2 size={17} className="animate-spin" /> : "Save sale"}
