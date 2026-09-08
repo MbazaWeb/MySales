@@ -4,6 +4,8 @@ import { useRouter } from "next/navigation";
 import { ArrowRight, Check, AlertCircle, Loader2 } from "lucide-react";
 import { sendOtp, verifyOtp } from "@/lib/supabase/actions";
 
+type AuthMethod = "email" | "mobile";
+
 export default function Auth() {
   const router = useRouter();
   const [mode, setMode]   = useState<"login" | "register">("register");
@@ -13,9 +15,11 @@ export default function Auth() {
   const [pending, startTransition] = useTransition();
   const [resendPending, startResendTransition] = useTransition();
   const [otpIdentifier, setOtpIdentifier] = useState<string | null>(null);
+  const [authMethod, setAuthMethod] = useState<AuthMethod>("email");
 
   // Register step-1 fields (held in state so step 2 can submit them together)
-  const [reg, setReg] = useState({ full_name: "", identifier: "" });
+  const [reg, setReg] = useState({ full_name: "", email: "", countryCode: "+255", mobile: "" });
+  const [login, setLogin] = useState({ email: "", countryCode: "+255", mobile: "" });
   const [biz, setBiz] = useState({ name: "", type: "Bar", location: "" });
 
   useEffect(() => {
@@ -24,13 +28,21 @@ export default function Auth() {
     if (callbackError) setError(callbackError);
   }, []);
 
+  function identifierFor(values: { email: string; countryCode: string; mobile: string }) {
+    if (authMethod === "email") return values.email.trim();
+    return `${values.countryCode}${values.mobile.replace(/\D/g, "")}`;
+  }
+
+  const otpIsEmail = otpIdentifier?.includes("@") ?? false;
+
   async function handleRegisterStep2(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
+    const identifier = identifierFor(reg);
     startTransition(async () => {
       const fd = new FormData();
       fd.append("full_name", reg.full_name);
-      fd.append("identifier", reg.identifier);
+      fd.append("identifier", identifier);
       fd.append("biz_name",  biz.name);
       fd.append("biz_type",  biz.type);
       fd.append("biz_loc",   biz.location);
@@ -39,7 +51,7 @@ export default function Auth() {
         setError(result.error);
       } else {
         setResendNote(null);
-        setOtpIdentifier(reg.identifier);
+        setOtpIdentifier(identifier);
       }
     });
   }
@@ -47,14 +59,16 @@ export default function Auth() {
   async function handleLogin(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     setError(null);
-    const fd = new FormData(e.currentTarget);
+    const identifier = identifierFor(login);
     startTransition(async () => {
+      const fd = new FormData();
+      fd.set("identifier", identifier);
       const result = await sendOtp(fd);
       if ("error" in result && result.error) {
         setError(result.error);
       } else {
         setResendNote(null);
-        setOtpIdentifier(fd.get("identifier") as string);
+        setOtpIdentifier(identifier);
       }
     });
   }
@@ -88,7 +102,9 @@ export default function Auth() {
       if ("error" in result && result.error) {
         setError(result.error);
       } else {
-        setResendNote("We sent a new email. Check your inbox and spam folder.");
+        setResendNote(otpIsEmail
+          ? "We sent a new email. Check your inbox and spam folder."
+          : "We sent a new code. Check your mobile messages.");
       }
     });
   }
@@ -151,7 +167,7 @@ export default function Auth() {
             {(["register", "login"] as const).map(m => (
               <button
                 key={m}
-                onClick={() => { setMode(m); setStep(1); setOtpIdentifier(null); setError(null); setResendNote(null); }}
+                onClick={() => { setMode(m); setStep(1); setOtpIdentifier(null); setError(null); setResendNote(null); setAuthMethod("email"); }}
                 className="flex-1 rounded-md py-2.5 text-sm font-semibold transition-colors"
                 style={mode === m
                   ? { background: "var(--surface)", color: "var(--navy-700)", boxShadow: "0 1px 4px rgba(0,0,0,0.1)" }
@@ -163,10 +179,10 @@ export default function Auth() {
           </div>
 
           <h1 className="text-2xl font-bold mb-1">
-            {otpIdentifier ? "Check your email" : mode === "login" ? "Welcome back" : step === 1 ? "Start your free trial" : "Your business details"}
+            {otpIdentifier ? otpIsEmail ? "Check your email" : "Check your mobile" : mode === "login" ? "Welcome back" : step === 1 ? "Start your free trial" : "Your business details"}
           </h1>
           <p className="text-sm mb-7" style={{ color: "var(--text-muted)" }}>
-            {otpIdentifier ? "Use the email link or enter the six-digit code."
+            {otpIdentifier ? otpIsEmail ? "Use the email link or enter the six-digit code." : "Enter the six-digit code from your SMS."
               : mode === "login" ? "Continue managing your businesses."
               : step === 1 ? "14 days free, no credit card required."
               : "Your first branch will be created automatically."}
@@ -188,13 +204,15 @@ export default function Auth() {
                 style={{ background: "var(--gold-100)" }}>
                 <Check size={24} style={{ color: "var(--gold-500)" }} />
               </div>
-              <h2 className="text-xl font-bold mb-2">Check your inbox</h2>
+              <h2 className="text-xl font-bold mb-2">{otpIsEmail ? "Check your inbox" : "Check your messages"}</h2>
               <p className="text-sm mb-1" style={{ color: "var(--text-muted)" }}>
-                We sent a sign-in email to
+                {otpIsEmail ? "We sent a sign-in email to" : "We sent a six-digit code to"}
               </p>
               <p className="text-sm font-semibold mb-3">{otpIdentifier}</p>
               <p className="mx-auto mb-6 max-w-sm text-xs leading-relaxed" style={{ color: "var(--text-muted)" }}>
-                Click the link in the email, or enter the six-digit code if your email includes one.
+                {otpIsEmail
+                  ? "Click the link in the email, or enter the six-digit code if your email includes one."
+                  : "Enter the code from the SMS to continue."}
               </p>
               <form onSubmit={handleVerify} className="space-y-4 text-left">
                 <div>
@@ -218,7 +236,7 @@ export default function Auth() {
                 disabled={resendPending}
                 className="mt-4 w-full text-sm font-semibold text-center"
                 style={{ color: "var(--gold-500)" }}>
-                {resendPending ? "Sending..." : "Didn't receive it? Resend code"}
+                {resendPending ? "Sending..." : otpIsEmail ? "Didn't receive it? Resend email" : "Didn't receive it? Resend code"}
               </button>
               <button
                 onClick={() => { setOtpIdentifier(null); setError(null); setResendNote(null); }}
@@ -233,8 +251,18 @@ export default function Auth() {
             <form onSubmit={e => { e.preventDefault(); setStep(2); }} className="space-y-4">
               <Field label="Full name" placeholder="e.g. David Mbazza"
                 value={reg.full_name} onChange={v => setReg(r => ({ ...r, full_name: v }))} />
-              <Field label="Email or mobile number" placeholder="you@email.com or +255 7xx xxx xxx"
-                value={reg.identifier} onChange={v => setReg(r => ({ ...r, identifier: v }))} />
+              <AuthMethodSelect value={authMethod} onChange={setAuthMethod} />
+              {authMethod === "email" ? (
+                <Field label="Email" type="email" placeholder="you@email.com"
+                  value={reg.email} onChange={v => setReg(r => ({ ...r, email: v }))} />
+              ) : (
+                <MobileField
+                  countryCode={reg.countryCode}
+                  mobile={reg.mobile}
+                  onCountryCodeChange={v => setReg(r => ({ ...r, countryCode: v }))}
+                  onMobileChange={v => setReg(r => ({ ...r, mobile: v }))}
+                />
+              )}
               <button type="submit" className="btn-gold w-full justify-center py-3">
                 Continue <ArrowRight size={17} />
               </button>
@@ -271,11 +299,18 @@ export default function Auth() {
           {/* ── Login ── */}
           {mode === "login" && !otpIdentifier && (
             <form onSubmit={handleLogin} className="space-y-4">
-              <div>
-                <label className="form-label">Email or mobile number</label>
-                <input name="identifier" type="text" required className="dv-input"
-                  placeholder="you@email.com or +255 7xx xxx xxx" />
-              </div>
+              <AuthMethodSelect value={authMethod} onChange={setAuthMethod} />
+              {authMethod === "email" ? (
+                <Field label="Email" type="email" placeholder="you@email.com"
+                  value={login.email} onChange={v => setLogin(l => ({ ...l, email: v }))} />
+              ) : (
+                <MobileField
+                  countryCode={login.countryCode}
+                  mobile={login.mobile}
+                  onCountryCodeChange={v => setLogin(l => ({ ...l, countryCode: v }))}
+                  onMobileChange={v => setLogin(l => ({ ...l, mobile: v }))}
+                />
+              )}
               <button type="submit" disabled={pending} className="btn-gold w-full justify-center py-3">
                 {pending ? <Loader2 size={17} className="animate-spin" /> : "Sign in"}
               </button>
@@ -284,6 +319,65 @@ export default function Auth() {
         </section>
       </div>
     </main>
+  );
+}
+
+function AuthMethodSelect({ value, onChange }: {
+  value: AuthMethod; onChange: (value: AuthMethod) => void;
+}) {
+  return (
+    <div>
+      <label className="form-label">Choose sign-in method</label>
+      <div className="grid grid-cols-2 gap-2">
+        {(["email", "mobile"] as const).map(method => (
+          <button
+            key={method}
+            type="button"
+            onClick={() => onChange(method)}
+            className="rounded-lg border py-2.5 text-sm font-semibold transition-colors"
+            style={value === method
+              ? { background: "var(--navy-700)", borderColor: "var(--navy-700)", color: "#fff" }
+              : { background: "var(--surface)", borderColor: "var(--border)", color: "var(--text-secondary)" }}
+          >
+            {method === "email" ? "Email" : "Mobile"}
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function MobileField({ countryCode, mobile, onCountryCodeChange, onMobileChange }: {
+  countryCode: string;
+  mobile: string;
+  onCountryCodeChange: (value: string) => void;
+  onMobileChange: (value: string) => void;
+}) {
+  return (
+    <div>
+      <label className="form-label">Mobile number</label>
+      <div className="grid grid-cols-[5.5rem_1fr] gap-2">
+        <input
+          aria-label="Country code"
+          className="dv-input text-center"
+          inputMode="tel"
+          pattern="\+[0-9]{1,4}"
+          required
+          value={countryCode}
+          onChange={e => onCountryCodeChange(e.target.value.startsWith("+") ? e.target.value : `+${e.target.value}`)}
+        />
+        <input
+          aria-label="Mobile number"
+          className="dv-input"
+          inputMode="numeric"
+          pattern="[0-9 ]{6,15}"
+          placeholder="7xx xxx xxx"
+          required
+          value={mobile}
+          onChange={e => onMobileChange(e.target.value)}
+        />
+      </div>
+    </div>
   );
 }
 
