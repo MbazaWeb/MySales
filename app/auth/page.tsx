@@ -1,8 +1,8 @@
 "use client";
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { ArrowRight, Check, Eye, EyeOff, Gem, AlertCircle, Loader2 } from "lucide-react";
-import { signIn, signUp } from "@/lib/supabase/actions";
+import { ArrowRight, Check, Eye, EyeOff, Gem, AlertCircle, Loader2, Mail } from "lucide-react";
+import { signIn, signUp, resendConfirmation } from "@/lib/supabase/actions";
 
 export default function Auth() {
   const router = useRouter();
@@ -12,6 +12,8 @@ export default function Auth() {
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
   const [confirmEmail, setConfirmEmail] = useState<string | null>(null);
+  const [resendNote, setResendNote] = useState<string | null>(null);
+  const [resendPending, startResend] = useTransition();
 
   // Register step-1 fields (held in state so step 2 can submit them together)
   const [reg, setReg] = useState({ full_name: "", email: "", phone: "", password: "" });
@@ -160,9 +162,29 @@ export default function Auth() {
                 Click the link to activate your account, then sign in below.
                 Your business “{biz.name}” is already set up and waiting.
               </p>
+              {resendNote && (
+                <p className="text-xs mb-4 font-medium"
+                  style={{ color: resendNote.startsWith("Sorry") ? "var(--danger)" : "var(--success, #16A34A)" }}>
+                  {resendNote}
+                </p>
+              )}
               <button
-                onClick={() => { setMode("login"); setConfirmEmail(null); setError(null); }}
+                onClick={() =>
+                  startResend(async () => {
+                    setResendNote(null);
+                    const res = await resendConfirmation(confirmEmail);
+                    setResendNote("error" in res && res.error
+                      ? `Sorry — ${res.error}`
+                      : "Confirmation email sent again. Please check your inbox (and spam folder).");
+                  })
+                }
+                disabled={resendPending}
                 className="btn-gold w-full justify-center py-3">
+                {resendPending ? <Loader2 size={17} className="animate-spin" /> : <><Mail size={16} /> Resend confirmation email</>}
+              </button>
+              <button
+                onClick={() => { setMode("login"); setConfirmEmail(null); setError(null); setResendNote(null); }}
+                className="w-full mt-3 text-sm text-center" style={{ color: "var(--text-muted)" }}>
                 Back to sign in
               </button>
             </div>
