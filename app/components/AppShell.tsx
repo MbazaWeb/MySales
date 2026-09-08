@@ -1,13 +1,16 @@
 "use client";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import {
+import { 
   LayoutDashboard, ReceiptText, Package,
   FileBarChart, UserRound, Menu, X,
-  ChevronDown, LogOut, Gem, Bell,
+  ChevronDown, LogOut, Gem, Bell, Clock
 } from "lucide-react";
 import { useState, useTransition, useCallback, memo } from "react";
 import { signOut } from "@/lib/supabase/client-actions";
+import { Header } from "./Header";
+import { Header } from "./Header";
+import { Header } from "./Header";
 
 const links = [
   { href: "/dashboard", label: "Dashboard",  icon: LayoutDashboard, shortLabel: "Home"  },
@@ -20,6 +23,7 @@ const links = [
 interface AppShellProps {
   title:     string;
   subtitle:  string;
+  time?:     string;
   children:  React.ReactNode;
   action?:   React.ReactNode;
   branchId?: string;
@@ -27,7 +31,7 @@ interface AppShellProps {
   userName?: string;
 }
 
-function AppShell({ title, subtitle, children, action, bizName, userName }: AppShellProps) {
+function AppShell({ title, subtitle, time, children, action, bizName, userName }: AppShellProps) {
   const path              = usePathname();
   const router            = useRouter();
   const [open, setOpen]   = useState(false);
@@ -122,27 +126,7 @@ function AppShell({ title, subtitle, children, action, bizName, userName }: AppS
       <main className="dv-main">
 
         {/* Top header */}
-        <header className="dv-header">
-          <div className="dv-header__left">
-            <button
-              className="dv-header__menu-btn lg:hidden"
-              onClick={() => setOpen(true)}
-              aria-label="Open menu"
-            >
-              <Menu size={21} />
-            </button>
-            <div className="dv-header__titles">
-              <h1 className="dv-header__title">{title}</h1>
-              <p className="dv-header__subtitle">{subtitle}</p>
-            </div>
-          </div>
-          <div className="dv-header__actions">
-            {action}
-            <button className="dv-header__notif" aria-label="Notifications">
-              <Bell size={18} />
-            </button>
-          </div>
-        </header>
+        {/* Header rendered by Header component */}
 
         {/* Page content */}
         <div className="dv-content">{children}</div>
@@ -176,3 +160,11 @@ function AppShell({ title, subtitle, children, action, bizName, userName }: AppS
 }
 
 export default memo(AppShell);
+
+
+
+
+
+
+
+

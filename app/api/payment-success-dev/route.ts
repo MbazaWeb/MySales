@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { handleWebhook } from "@/lib/supabase/actions";
+import { handleWebhook } from "@/lib/supabase/server-actions";
 
 export async function POST(req: NextRequest) {
   // Only allow in dev or when Pesapal keys are not set
@@ -31,3 +31,4 @@ export async function POST(req: NextRequest) {
 
   return NextResponse.json(result);
 }
+

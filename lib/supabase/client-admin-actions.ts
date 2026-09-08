@@ -1,8 +1,9 @@
-"use server";
+﻿"use client";
+
 export {
   grantSubscription,
   revokeSubscription,
   extendTrial,
   deleteUser,
-  resetUserPassword,
+  resetUserPassword
 } from "./admin-actions";

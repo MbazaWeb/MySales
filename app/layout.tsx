@@ -2,6 +2,9 @@ import type { Metadata, Viewport } from "next";
 import "./globals.css";
 import SplashScreen from "./components/SplashScreen";
 import { ShimmerCSS } from "./components/Skeleton";
+import { ThemeWrapper } from "./components/ThemeWrapper";
+import { ThemeWrapper } from "./components/ThemeWrapper";
+import { ThemeWrapper } from "./components/ThemeWrapper";
 
 export const metadata: Metadata = {
   title: "DukaVerse",
@@ -42,7 +45,13 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <ShimmerCSS />
         <SplashScreen />
         {children}
-      </body>
+              </ThemeWrapper>
+    </body>
     </html>
   );
 }
+
+
+
+
+

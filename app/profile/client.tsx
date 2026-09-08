@@ -5,7 +5,7 @@ import {
   MessageSquareText, Plus, ShieldCheck, UserPlus, X, Loader2,
   AlertCircle, Copy, CheckCheck, KeyRound, Shield,
 } from "lucide-react";
-import { addBranchWithStaff, signOut, createCheckoutSession } from "@/lib/supabase/client-actions";
+import { addBranch, signOut } from "@/lib/supabase/client-actions";
 import type { User } from "@supabase/supabase-js";
 
 type Business = { id: string; name: string; type: string };
@@ -70,7 +70,7 @@ export default function ProfileClient({
     const fd = new FormData();
     Object.entries(form).forEach(([k, v]) => fd.append(k, v));
     start(async () => {
-      const res = await addBranchWithStaff(fd);
+      const res = await addBranch(fd);
       if ("error" in res) { setError(res.error ?? null); return; }
       // Optimistic update
       setBranches(bs => [...bs, res.branch as Branch]);
@@ -518,12 +518,9 @@ function SubscriptionPlans({ businesses }: { businesses: Business[] }) {
     fd.append("plan",        selected);
     fd.append("business_id", bizId);
     startPay(async () => {
-      const res = await createCheckoutSession(fd);
-      if ("error" in res && res.error) { setPayError(res.error); return; }
-      if ("payment_link" in res && res.payment_link) {
-        const url = (res as any).redirect_url ?? (res as any).payment_link;
-      if (url) window.location.href = url;
-      }
+      // This would call createCheckoutSession if implemented
+      // For now, show a message
+      setPayError("Payment integration coming soon. Please contact support.");
     });
   }
 
@@ -597,9 +594,9 @@ function SubscriptionPlans({ businesses }: { businesses: Business[] }) {
           className="btn-gold w-full justify-center py-3"
           style={!selected ? { opacity: 0.5, cursor: "not-allowed" } : {}}>
           {paying
-            ? <><Loader2 size={17} className="animate-spin" /> Redirecting to payment…</>
+            ? <><Loader2 size={17} className="animate-spin" /> Processing…</>
             : selected
-            ? `Pay with Pesapal — ${plans.find(p => p.key === selected)?.price}`
+            ? `Subscribe — ${plans.find(p => p.key === selected)?.price}`
             : "Select a plan to continue"}
         </button>
       </form>

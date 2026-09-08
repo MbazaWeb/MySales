@@ -1,7 +1,7 @@
-import { redirect }      from "next/navigation";
+import { redirect } from "next/navigation";
 import { getAdminData, requireAdmin } from "@/lib/supabase/admin-guard";
-import AdminShell        from "./components/AdminShell";
-import AdminDashClient   from "./dashboard-client";
+import AdminShell from "./components/AdminShell";
+import AdminDashClient from "./dashboard-client";
 
 export const dynamic = "force-dynamic";
 

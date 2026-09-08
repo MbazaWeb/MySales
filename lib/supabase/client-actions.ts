@@ -1,23 +1,24 @@
-/**
- * Client-safe re-export of server actions.
- * Import server actions in Client Components from HERE.
- * Server page.tsx files import directly from actions.ts.
- */
-"use server";
+﻿"use client";
 
-export {
+// Re-export server actions for client components
+export { 
   sendOtp,
   verifyOtp,
+  signUp,
+  signIn,
   signOut,
+  getActiveBranch,
+  getProducts,
   createProduct,
-  addStockEntry,
-  recordSale,
-  addBranch,
-  addBranchWithStaff,
-  createCheckoutSession,
-  handleWebhook,
-  getReportSales,
   editProduct,
   deleteProduct,
+  addStockEntry,
+  getSales,
+  recordSale,
+  getReportSales,
   getStockLogs,
-} from "./actions";
+  getBusinessData,
+  addBranch,
+  inviteStaff,
+  getBusinessDataWithStaff
+} from "./server-actions";

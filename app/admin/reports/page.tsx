@@ -1,6 +1,6 @@
 import { getAdminData, requireAdmin } from "@/lib/supabase/admin-guard";
-import AdminShell     from "../components/AdminShell";
-import ReportsClient  from "./client";
+import AdminShell from "../components/AdminShell";
+import ReportsClient from "./client";
 
 export const dynamic = "force-dynamic";
 

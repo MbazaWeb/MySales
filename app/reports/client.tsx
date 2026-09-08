@@ -107,13 +107,13 @@ export default function ReportsClient({
 
           {period==="Custom"&&(
             <div className="flex gap-3">
-              {([["From",from,setFrom],["To",to,setTo]] as [string,string,(v:string)=>void][]).map(([lbl,val,set])=>(
+              {([["From",from,setFrom],["To",to,setTo]] as [string,string,(v:string)=>void][]).map(([lbl,val,set])=>((
                 <label key={lbl} className="text-xs font-semibold" style={{color:"var(--text-muted)"}}>
                   {lbl}
                   <input type="date" value={val} className="dv-input mt-1 block" style={{width:"auto"}}
                     onChange={e=>{set(e.target.value);loadReport("Custom",lbl==="From"?e.target.value:from,lbl==="To"?e.target.value:to);}}/>
                 </label>
-              ))}
+              )))}
             </div>
           )}
 

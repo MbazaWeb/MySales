@@ -1,7 +1,8 @@
-import { redirect }  from "next/navigation";
-import SalesClient   from "./client";
-import AppShell      from "../components/AppShell";
-import { getActiveBranch, getSales, getProducts } from "@/lib/supabase/actions";
+import { redirect } from "next/navigation";
+import SalesClient from "./client";
+import AppShell from "../components/AppShell";
+import { getActiveBranch, getSales, getProducts } from "@/lib/supabase/server-actions";
+import { BIZ_TZ } from "@/lib/supabase/tz";
 
 export const dynamic = "force-dynamic";
 
@@ -14,10 +15,22 @@ export default async function SalesPage() {
     getProducts(ctx.branch.id),
   ]);
 
+  const currentTime = new Date().toLocaleString("en-TZ", {
+    timeZone: BIZ_TZ,
+    weekday: "short",
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit"
+  });
+
   return (
     <AppShell
       title="Sales"
       subtitle="Record and review every transaction"
+      time={currentTime}
       branchId={ctx.branch.id}
       bizName={ctx.biz.name}
       userName={ctx.user.user_metadata?.full_name ?? ctx.user.email}
