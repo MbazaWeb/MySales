@@ -51,7 +51,7 @@ export default async function Dashboard() {
   }).reverse();
 
   const dailySales = last7Days.map(date => {
-    const key = dateKeyInBizTz(date);
+    const key = dateKeyInBizTz(date.toISOString());
     const daySales = sales.filter(s => dateKeyInBizTz(s.created_at) === key);
     return {
       date: key,

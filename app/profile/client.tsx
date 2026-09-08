@@ -5,7 +5,7 @@ import {
   MessageSquareText, Plus, ShieldCheck, UserPlus, X, Loader2,
   AlertCircle, Copy, CheckCheck, KeyRound, Shield,
 } from "lucide-react";
-import { addBranch, signOut } from "@/lib/supabase/client-actions";
+import { addBranchWithStaff, signOut } from "@/lib/supabase/server-actions";
 import type { User } from "@supabase/supabase-js";
 
 type Business = { id: string; name: string; type: string };
@@ -70,7 +70,7 @@ export default function ProfileClient({
     const fd = new FormData();
     Object.entries(form).forEach(([k, v]) => fd.append(k, v));
     start(async () => {
-      const res = await addBranch(fd);
+      const res = await addBranchWithStaff(fd);
       if ("error" in res) { setError(res.error ?? null); return; }
       // Optimistic update
       setBranches(bs => [...bs, res.branch as Branch]);

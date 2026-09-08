@@ -8,6 +8,7 @@ import {
 } from "lucide-react";
 import { useState, useTransition, useCallback, memo } from "react";
 import { signOut } from "@/lib/supabase/client-actions";
+import { Header } from "./Header";
 
 const links = [
   { href: "/dashboard", label: "Dashboard",  icon: LayoutDashboard, shortLabel: "Home"  },
@@ -123,7 +124,7 @@ function AppShell({ title, subtitle, time, children, action, bizName, userName }
       <main className="dv-main">
 
         {/* Top header */}
-        {/* Header rendered by Header component */}
+        <Header title={title} subtitle={subtitle} time={time} action={action} />
 
         {/* Page content */}
         <div className="dv-content">{children}</div>

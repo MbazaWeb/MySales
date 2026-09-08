@@ -3,8 +3,6 @@ import "./globals.css";
 import SplashScreen from "./components/SplashScreen";
 import { ShimmerCSS } from "./components/Skeleton";
 import { ThemeWrapper } from "./components/ThemeWrapper";
-import { ThemeWrapper } from "./components/ThemeWrapper";
-import { ThemeWrapper } from "./components/ThemeWrapper";
 
 export const metadata: Metadata = {
   title: "DukaVerse",
@@ -42,11 +40,12 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
       </head>
       <body className="antialiased">
+        <ThemeWrapper>
         <ShimmerCSS />
         <SplashScreen />
         {children}
-              </ThemeWrapper>
-    </body>
+        </ThemeWrapper>
+      </body>
     </html>
   );
 }
