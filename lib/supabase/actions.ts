@@ -549,7 +549,7 @@ export async function getBusinessDataWithStaff(userId: string) {
   };
 }
 
-// ── Subscription / payment flow ───────────────────────────────────────────────
+// ── Subscription / payment flow (Pesapal — Tanzania/EAC) ────────────────────
 
 const PLAN_PRICES: Record<string, { amount: number; label: string; months: number }> = {
   monthly:   { amount: 15000,  label: "Monthly",   months: 1  },
@@ -558,18 +558,35 @@ const PLAN_PRICES: Record<string, { amount: number; label: string; months: numbe
   yearly:    { amount: 140000, label: "Yearly",    months: 12 },
 };
 
+async function getPesapalToken(): Promise<string> {
+  const res = await fetch("https://pay.pesapal.com/v3/api/Auth/RequestToken", {
+    method:  "POST",
+    headers: { "Content-Type": "application/json", Accept: "application/json" },
+    body: JSON.stringify({
+      consumer_key:    process.env.PESAPAL_CONSUMER_KEY,
+      consumer_secret: process.env.PESAPAL_CONSUMER_SECRET,
+    }),
+    cache: "no-store",
+  });
+  const data = await res.json();
+  if (!data.token) throw new Error(data.message ?? "Pesapal auth failed");
+  return data.token;
+}
+
 /**
- * Initiates a Flutterwave payment session for the selected plan.
- * Returns a payment_link the client should redirect to.
+ * Initiates a Pesapal payment session for the selected plan.
+ * Returns a redirect_url the client should navigate to.
+ * Pesapal supports: M-Pesa TZ, Airtel Money TZ, Tigo Pesa, Halo Pesa, card.
+ * Works across Tanzania, Kenya, Uganda, Rwanda, Zambia.
  */
 export async function createCheckoutSession(formData: FormData) {
-  const supabase   = await createClient();
+  const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return { error: "Authentication required." };
 
-  const planKey     = formData.get("plan") as string;
-  const businessId  = formData.get("business_id") as string;
-  const plan        = PLAN_PRICES[planKey];
+  const planKey    = formData.get("plan") as string;
+  const businessId = formData.get("business_id") as string;
+  const plan       = PLAN_PRICES[planKey];
   if (!plan) return { error: "Invalid plan selected." };
 
   const { data: biz } = await supabase
@@ -580,56 +597,61 @@ export async function createCheckoutSession(formData: FormData) {
     .single();
   if (!biz) return { error: "Business not found." };
 
-  const txRef = `DUKA-${businessId.slice(0, 8).toUpperCase()}-${Date.now()}`;
+  const orderRef = `DUKA-${businessId.slice(0, 8).toUpperCase()}-${Date.now()}`;
+  const appUrl   = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
 
-  const flutterwaveKey = process.env.FLUTTERWAVE_SECRET_KEY;
-  if (!flutterwaveKey) {
-    // Dev mode — return a mock payment link
+  // Dev mode — no Pesapal keys set
+  if (!process.env.PESAPAL_CONSUMER_KEY) {
     return {
-      payment_link: `/payment-success?tx_ref=${txRef}&plan=${planKey}&business_id=${businessId}`,
+      redirect_url: `/payment-success?tx_ref=${orderRef}&plan=${planKey}&business_id=${businessId}&status=successful`,
       mock: true,
     };
   }
 
-  const payload = {
-    tx_ref:       txRef,
-    amount:       plan.amount,
-    currency:     "TZS",
-    redirect_url: `${process.env.NEXT_PUBLIC_APP_URL}/payment-success`,
-    customer: {
-      email:      user.email,
-      name:       user.user_metadata?.full_name ?? user.email,
-    },
-    customizations: {
-      title:       `DukaVerse — ${plan.label}`,
-      description: `${plan.label} subscription for ${biz.name}`,
-      logo:        `${process.env.NEXT_PUBLIC_APP_URL}/logo.png`,
-    },
-    meta: {
-      plan:        planKey,
-      business_id: businessId,
-      user_id:     user.id,
-      months:      plan.months,
-    },
-  };
+  try {
+    const token = await getPesapalToken();
 
-  const res = await fetch("https://api.flutterwave.com/v3/payments", {
-    method:  "POST",
-    headers: {
-      "Content-Type":  "application/json",
-      Authorization:   `Bearer ${flutterwaveKey}`,
-    },
-    body: JSON.stringify(payload),
-  });
+    // Register IPN (idempotent — safe to call repeatedly)
+    const ipnRes = await fetch("https://pay.pesapal.com/v3/api/URLSetup/RegisterIPN", {
+      method:  "POST",
+      headers: { "Content-Type": "application/json", Accept: "application/json", Authorization: `Bearer ${token}` },
+      body: JSON.stringify({
+        url:          `${appUrl}/api/payment-webhook`,
+        ipn_notification_type: "GET",
+      }),
+    });
+    const ipnData = await ipnRes.json();
+    const ipnId   = ipnData.ipn_id ?? process.env.PESAPAL_IPN_ID;
 
-  const data = await res.json();
-  if (data.status !== "success") return { error: data.message ?? "Payment initiation failed." };
-  return { payment_link: data.data.link };
+    // Submit order
+    const orderRes = await fetch("https://pay.pesapal.com/v3/api/Transactions/SubmitOrderRequest", {
+      method:  "POST",
+      headers: { "Content-Type": "application/json", Accept: "application/json", Authorization: `Bearer ${token}` },
+      body: JSON.stringify({
+        id:                 orderRef,
+        currency:           "TZS",
+        amount:             plan.amount,
+        description:        `DukaVerse ${plan.label} — ${biz.name}`,
+        callback_url:       `${appUrl}/payment-success`,
+        notification_id:    ipnId,
+        billing_address: {
+          email_address:   user.email,
+          first_name:      (user.user_metadata?.full_name as string ?? "").split(" ")[0] || "Customer",
+          last_name:       (user.user_metadata?.full_name as string ?? "").split(" ").slice(1).join(" ") || ".",
+          country_code:    "TZ",
+        },
+      }),
+    });
+    const orderData = await orderRes.json();
+    if (!orderData.redirect_url) return { error: orderData.message ?? "Payment initiation failed." };
+    return { redirect_url: orderData.redirect_url };
+  } catch (err: any) {
+    return { error: err.message ?? "Payment service unavailable." };
+  }
 }
 
 /**
- * Called from /api/payment-webhook — verifies Flutterwave signature
- * and creates/updates the subscription row.
+ * Pesapal IPN webhook — called by Pesapal on successful payment.
  */
 export async function handleWebhook(body: {
   event:    string;
@@ -655,8 +677,8 @@ export async function handleWebhook(body: {
   const { plan, business_id, months } = body.data.meta;
   const planInfo = PLAN_PRICES[plan] ?? { label: plan, amount: body.data.amount };
 
-  const now      = new Date();
-  const endsAt   = new Date(now);
+  const now    = new Date();
+  const endsAt = new Date(now);
   endsAt.setMonth(endsAt.getMonth() + months);
 
   const { error } = await admin.from("subscriptions").insert({
@@ -664,7 +686,7 @@ export async function handleWebhook(body: {
     billing_interval: planInfo.label as any,
     status:           "Active",
     amount_tzs:       body.data.amount,
-    provider:         "flutterwave",
+    provider:         "pesapal",
     provider_reference: body.data.tx_ref,
     starts_at:        now.toISOString(),
     ends_at:          endsAt.toISOString(),
@@ -672,7 +694,6 @@ export async function handleWebhook(body: {
 
   if (error) return { ok: false, error: error.message };
 
-  // Extend trial_ends_at on the business to match
   await admin.from("businesses")
     .update({ trial_ends_at: endsAt.toISOString() })
     .eq("id", business_id);

@@ -24,7 +24,10 @@ export default async function Dashboard() {
   const totalUnits = products.reduce((a, p) => a + p.stock, 0);
   const today = todayInBizTz();
   const todaySales = sales.filter(s => dateKeyInBizTz(s.created_at) === today);
-  const todayRev = todaySales.reduce((a, s) => a + s.total, 0);
+  const todayRev    = todaySales.reduce((a, s) => a + s.total, 0);
+  const todayProfit = todaySales.reduce((a, s) => a + (s.profit ?? 0), 0);
+  const totalProfit = sales.reduce((a, s) => a + (s.profit ?? 0), 0);
+  const stockCostValue = products.reduce((a, p) => a + p.stock * (p.cost_price ?? 0), 0);
 
   // Top sellers by qty this session
   const sellerMap: Record<string, number> = {};
@@ -37,10 +40,10 @@ export default async function Dashboard() {
   const maxQty = topSellers[0]?.[1] ?? 1;
 
   const cards = [
-    { label: "Today's revenue",    value: money(todayRev),            sub: `${todaySales.length} transactions today`, icon: WalletCards, accent: true,  warn: false },
-    { label: "Total sales",        value: String(sales.length),       sub: "All recorded transactions",               icon: ReceiptText, accent: false, warn: false },
-    { label: "Units in stock",     value: String(totalUnits),         sub: `${products.length} product lines`,        icon: Package,     accent: false, warn: false },
-    { label: "Low stock alerts",   value: String(lowStock.length),    sub: "Need reordering",                         icon: TriangleAlert, accent: false, warn: lowStock.length > 0 },
+    { label: "Today's revenue", value: money(todayRev),    sub: `${todaySales.length} transactions today`,  icon: WalletCards,   accent: true,  warn: false },
+    { label: "Today's profit",  value: money(todayProfit), sub: `${money(totalProfit)} all time`,           icon: TrendingUp,    accent: false, warn: false, ok: true },
+    { label: "Units in stock",  value: String(totalUnits), sub: `Stock cost ${money(stockCostValue)}`,      icon: Package,       accent: false, warn: false },
+    { label: "Low stock",       value: String(lowStock.length), sub: "Need reordering",                    icon: TriangleAlert, accent: false, warn: lowStock.length > 0 },
   ];
 
   const now = new Date();
@@ -77,6 +80,8 @@ export default async function Dashboard() {
                 ? { background: "var(--navy-700)", borderColor: "var(--navy-500)" }
                 : c.warn
                 ? { background: "var(--warning-bg)", borderColor: "#FDE68A" }
+                : (c as any).ok
+                ? { background: "var(--success-bg)", borderColor: "#BBF7D0" }
                 : {}}>
               <div className="flex items-start justify-between">
                 <span className="text-xs font-medium"

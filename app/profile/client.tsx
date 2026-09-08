@@ -521,7 +521,8 @@ function SubscriptionPlans({ businesses }: { businesses: Business[] }) {
       const res = await createCheckoutSession(fd);
       if ("error" in res && res.error) { setPayError(res.error); return; }
       if ("payment_link" in res && res.payment_link) {
-        window.location.href = res.payment_link as string;
+        const url = (res as any).redirect_url ?? (res as any).payment_link;
+      if (url) window.location.href = url;
       }
     });
   }
@@ -598,13 +599,13 @@ function SubscriptionPlans({ businesses }: { businesses: Business[] }) {
           {paying
             ? <><Loader2 size={17} className="animate-spin" /> Redirecting to payment…</>
             : selected
-            ? `Pay with Flutterwave — ${plans.find(p => p.key === selected)?.price}`
+            ? `Pay with Pesapal — ${plans.find(p => p.key === selected)?.price}`
             : "Select a plan to continue"}
         </button>
       </form>
 
       <p className="text-xs mt-3 text-center" style={{ color: "var(--text-muted)" }}>
-        Payments via Flutterwave · M-Pesa, Airtel Money, card accepted
+        Pesapal · M-Pesa TZ, Airtel Money, Tigo Pesa, Halo Pesa, card
       </p>
     </section>
   );

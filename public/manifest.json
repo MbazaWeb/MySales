@@ -1,22 +1,23 @@
 {
   "name": "DukaVerse",
   "short_name": "DukaVerse",
-  "description": "Multi-branch sales and inventory management",
-  "start_url": "/",
+  "description": "Multi-branch sales and inventory management for East African businesses",
+  "start_url": "/dashboard",
   "display": "standalone",
+  "display_override": ["standalone", "minimal-ui"],
+  "orientation": "portrait-primary",
   "background_color": "#0F1B2D",
   "theme_color": "#0F1B2D",
+  "scope": "/",
+  "lang": "en",
+  "categories": ["business", "finance", "productivity"],
   "icons": [
-    {
-      "src": "/app-icon.png",
-      "sizes": "1254x1254",
-      "type": "image/png",
-      "purpose": "any maskable"
-    },
-    {
-      "src": "/apple-touch-icon.png",
-      "sizes": "1254x1254",
-      "type": "image/png"
-    }
+    { "src": "/favicon.png",       "sizes": "96x96",     "type": "image/png" },
+    { "src": "/apple-touch-icon.png", "sizes": "180x180", "type": "image/png" },
+    { "src": "/app-icon.png",      "sizes": "1254x1254", "type": "image/png", "purpose": "any maskable" }
+  ],
+  "shortcuts": [
+    { "name": "New sale",  "url": "/sales",     "icons": [{ "src": "/favicon.png", "sizes": "96x96" }] },
+    { "name": "Inventory", "url": "/inventory", "icons": [{ "src": "/favicon.png", "sizes": "96x96" }] }
   ]
 }
