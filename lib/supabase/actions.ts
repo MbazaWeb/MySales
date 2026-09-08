@@ -8,9 +8,11 @@ import { bizDayRange }     from "./tz";
 
 // ── Auth ──────────────────────────────────────────────────────────────────────
 
+type AuthPhase = "send" | "verify" | "password";
+
 /** Map raw Supabase auth errors to messages a business owner can act on. */
-function friendlyAuthError(message: string): string {
-  const m = message.toLowerCase();
+function friendlyAuthError(message: string, code = "", phase: AuthPhase = "password"): string {
+  const m = `${code} ${message}`.toLowerCase();
   if (m.includes("rate limit") || m.includes("over_email_send_rate_limit")) {
     return "Too many verification messages were sent from our side. Please wait about an hour and try again - your details are safe.";
   }
@@ -29,10 +31,26 @@ function friendlyAuthError(message: string): string {
   if (m.includes("invalid login credentials")) {
     return "Wrong email or password. Please try again.";
   }
-  if (m.includes("token") || m.includes("otp")) {
+  if (phase === "send" && (m.includes("signup") && m.includes("disabled"))) {
+    return "New account registration is temporarily unavailable. Please contact support.";
+  }
+  if (phase === "send" && (m.includes("database") || m.includes("saving new user") || m.includes("unexpected_failure"))) {
+    return "We could not create your account details. Please try again; if this continues, contact support.";
+  }
+  if (phase === "send" && (m.includes("sms") || m.includes("email") || m.includes("otp") || m.includes("token"))) {
+    return "We could not send the verification message. Check the address or mobile number, then try again.";
+  }
+  if (phase === "verify" && (m.includes("token") || m.includes("otp") || m.includes("expired"))) {
     return "That verification code was not accepted. Please check the code and try again.";
   }
   return message;
+}
+
+function normalizePhone(value: string): string {
+  const compact = value.replace(/[\s()-]/g, "");
+  if (compact.startsWith("0")) return `+255${compact.slice(1)}`;
+  if (compact.startsWith("255")) return `+${compact}`;
+  return compact;
 }
 
 async function getAuthRedirectTo() {
@@ -49,10 +67,16 @@ async function getAuthRedirectTo() {
 
 export async function sendOtp(formData: FormData) {
   const supabase = await createClient();
-  const identifier = (formData.get("identifier") as string | null)?.trim() ?? "";
-  const isEmail = identifier.includes("@");
+  const rawIdentifier = (formData.get("identifier") as string | null)?.trim() ?? "";
+  const isEmail = rawIdentifier.includes("@");
+  const identifier = isEmail ? rawIdentifier.toLowerCase() : normalizePhone(rawIdentifier);
+  const isRegistration = formData.get("intent") === "register";
 
-  if (!identifier || (isEmail && !/^\S+@\S+\.\S+$/.test(identifier))) {
+  if (
+    !identifier
+    || (isEmail && !/^\S+@\S+\.\S+$/.test(identifier))
+    || (!isEmail && !/^\+[1-9]\d{7,14}$/.test(identifier))
+  ) {
     return { error: "Enter a valid email address or mobile number." };
   }
 
@@ -66,20 +90,35 @@ export async function sendOtp(formData: FormData) {
   };
 
   const emailRedirectTo = await getAuthRedirectTo();
+  const options = {
+    data: isRegistration ? data : undefined,
+    shouldCreateUser: isRegistration,
+    ...(isEmail && emailRedirectTo ? { emailRedirectTo } : {}),
+  };
   const credentials = isEmail
-    ? { email: identifier, options: { data, emailRedirectTo } }
-    : { phone: identifier, options: { data } };
-  const { error } = await supabase.auth.signInWithOtp(credentials);
+    ? { email: identifier, options }
+    : { phone: identifier, options };
+  const { data: authData, error } = await supabase.auth.signInWithOtp(credentials);
 
-  if (error) return { error: friendlyAuthError(error.message) };
-  return { success: true };
+  if (error) {
+    console.error("Supabase OTP send failed", { code: error.code, message: error.message, isEmail, isRegistration });
+    return { error: friendlyAuthError(error.message, error.code, "send") };
+  }
+  return {
+    success: true,
+    identifier,
+    // Email auto-confirm can establish a session immediately. The UI must not
+    // ask for an OTP in that case because there is nothing left to verify.
+    authenticated: Boolean(authData.session),
+  };
 }
 
 export async function verifyOtp(formData: FormData) {
   const supabase = await createClient();
-  const identifier = (formData.get("identifier") as string | null)?.trim() ?? "";
-  const token = (formData.get("token") as string | null)?.trim() ?? "";
-  const isEmail = identifier.includes("@");
+  const rawIdentifier = (formData.get("identifier") as string | null)?.trim() ?? "";
+  const isEmail = rawIdentifier.includes("@");
+  const identifier = isEmail ? rawIdentifier.toLowerCase() : normalizePhone(rawIdentifier);
+  const token = ((formData.get("token") as string | null) ?? "").replace(/\D/g, "");
 
   if (!identifier || !/^\d{6}$/.test(token)) {
     return { error: "Enter the six-digit verification code." };
@@ -91,7 +130,10 @@ export async function verifyOtp(formData: FormData) {
       : { phone: identifier, token, type: "sms" },
   );
 
-  if (error) return { error: friendlyAuthError(error.message) };
+  if (error) {
+    console.error("Supabase OTP verification failed", { code: error.code, message: error.message, isEmail });
+    return { error: friendlyAuthError(error.message, error.code, "verify") };
+  }
   revalidatePath("/dashboard");
   return { success: true };
 }
@@ -122,7 +164,7 @@ export async function signUp(formData: FormData) {
       },
     },
   });
-  if (authErr) return { error: friendlyAuthError(authErr.message) };
+  if (authErr) return { error: friendlyAuthError(authErr.message, authErr.code) };
 
   if (!authData.user) {
     return { error: "Account creation did not return a user. Please try again." };
@@ -141,7 +183,7 @@ export async function signIn(formData: FormData) {
     email:    formData.get("email")    as string,
     password: formData.get("password") as string,
   });
-  if (error) return { error: friendlyAuthError(error.message) };
+  if (error) return { error: friendlyAuthError(error.message, error.code) };
   revalidatePath("/dashboard");
   return { success: true };
 }

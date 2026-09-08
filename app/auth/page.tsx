@@ -1,13 +1,22 @@
 "use client";
-import { useEffect, useState, useTransition } from "react";
-import { useRouter } from "next/navigation";
+import { Suspense, useState, useTransition } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { ArrowRight, Check, AlertCircle, Loader2 } from "lucide-react";
 import { sendOtp, verifyOtp } from "@/lib/supabase/actions";
 
 type AuthMethod = "email" | "mobile";
 
 export default function Auth() {
+  return (
+    <Suspense fallback={<main className="min-h-screen" style={{ background: "var(--background)" }} />}>
+      <AuthContent />
+    </Suspense>
+  );
+}
+
+function AuthContent() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [mode, setMode]   = useState<"login" | "register">("register");
   const [step, setStep]   = useState(1);
   const [error, setError] = useState<string | null>(null);
@@ -22,11 +31,7 @@ export default function Auth() {
   const [login, setLogin] = useState({ email: "", countryCode: "+255", mobile: "" });
   const [biz, setBiz] = useState({ name: "", type: "Bar", location: "" });
 
-  useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    const callbackError = params.get("error");
-    if (callbackError) setError(callbackError);
-  }, []);
+  const displayedError = error ?? searchParams.get("error");
 
   function identifierFor(values: { email: string; countryCode: string; mobile: string }) {
     if (authMethod === "email") return values.email.trim();
@@ -42,16 +47,28 @@ export default function Auth() {
     startTransition(async () => {
       const fd = new FormData();
       fd.append("full_name", reg.full_name);
+<<<<<<< HEAD
       fd.append("identifier", identifier);
+=======
+      fd.append("identifier", reg.identifier);
+      fd.append("intent", "register");
+>>>>>>> dfd42a427ac9fab450e70c17b75dbd8b1dc44822
       fd.append("biz_name",  biz.name);
       fd.append("biz_type",  biz.type);
       fd.append("biz_loc",   biz.location);
       const result = await sendOtp(fd);
       if ("error" in result && result.error) {
         setError(result.error);
+      } else if ("authenticated" in result && result.authenticated) {
+        router.push("/dashboard");
+        router.refresh();
       } else {
         setResendNote(null);
+<<<<<<< HEAD
         setOtpIdentifier(identifier);
+=======
+        setOtpIdentifier(("identifier" in result ? result.identifier : null) ?? reg.identifier);
+>>>>>>> dfd42a427ac9fab450e70c17b75dbd8b1dc44822
       }
     });
   }
@@ -59,16 +76,28 @@ export default function Auth() {
   async function handleLogin(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     setError(null);
+<<<<<<< HEAD
     const identifier = identifierFor(login);
+=======
+    const fd = new FormData(e.currentTarget);
+    fd.set("intent", "login");
+>>>>>>> dfd42a427ac9fab450e70c17b75dbd8b1dc44822
     startTransition(async () => {
       const fd = new FormData();
       fd.set("identifier", identifier);
       const result = await sendOtp(fd);
       if ("error" in result && result.error) {
         setError(result.error);
+      } else if ("authenticated" in result && result.authenticated) {
+        router.push("/dashboard");
+        router.refresh();
       } else {
         setResendNote(null);
+<<<<<<< HEAD
         setOtpIdentifier(identifier);
+=======
+        setOtpIdentifier(("identifier" in result ? result.identifier : null) ?? fd.get("identifier") as string);
+>>>>>>> dfd42a427ac9fab450e70c17b75dbd8b1dc44822
       }
     });
   }
@@ -91,6 +120,7 @@ export default function Auth() {
     setResendNote(null);
     const fd = new FormData();
     fd.set("identifier", otpIdentifier);
+    fd.set("intent", mode);
     if (mode === "register") {
       fd.set("full_name", reg.full_name);
       fd.set("biz_name", biz.name);
@@ -101,6 +131,9 @@ export default function Auth() {
       const result = await sendOtp(fd);
       if ("error" in result && result.error) {
         setError(result.error);
+      } else if ("authenticated" in result && result.authenticated) {
+        router.push("/dashboard");
+        router.refresh();
       } else {
         setResendNote(otpIsEmail
           ? "We sent a new email. Check your inbox and spam folder."
@@ -189,11 +222,11 @@ export default function Auth() {
           </p>
 
           {/* Error banner */}
-          {error && (
+          {displayedError && (
             <div className="mb-5 flex items-center gap-3 rounded-lg px-4 py-3"
               style={{ background: "var(--danger-bg)", border: "1px solid #FECACA" }}>
               <AlertCircle size={16} style={{ color: "var(--danger)", flexShrink: 0 }} />
-              <p className="text-sm" style={{ color: "var(--danger)" }}>{error}</p>
+              <p className="text-sm" style={{ color: "var(--danger)" }}>{displayedError}</p>
             </div>
           )}
 
@@ -299,6 +332,7 @@ export default function Auth() {
           {/* ── Login ── */}
           {mode === "login" && !otpIdentifier && (
             <form onSubmit={handleLogin} className="space-y-4">
+<<<<<<< HEAD
               <AuthMethodSelect value={authMethod} onChange={setAuthMethod} />
               {authMethod === "email" ? (
                 <Field label="Email" type="email" placeholder="you@email.com"
@@ -311,6 +345,14 @@ export default function Auth() {
                   onMobileChange={v => setLogin(l => ({ ...l, mobile: v }))}
                 />
               )}
+=======
+              <div>
+                <label className="form-label">Email or mobile number</label>
+                <input name="identifier" type="text" required className="dv-input"
+                  autoComplete={mode === "login" ? "username" : "email"}
+                  placeholder="you@email.com or +255 7xx xxx xxx" />
+              </div>
+>>>>>>> dfd42a427ac9fab450e70c17b75dbd8b1dc44822
               <button type="submit" disabled={pending} className="btn-gold w-full justify-center py-3">
                 {pending ? <Loader2 size={17} className="animate-spin" /> : "Sign in"}
               </button>
