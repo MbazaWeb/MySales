@@ -83,13 +83,26 @@ export function useStockLogs(branchId: string | null) {
     if (!branchId) return;
     const supabase = createClient();
 
-    supabase
-      .from("stock_logs")
-      .select("*")
-      .eq("branch_id", branchId!)
-      .order("created_at", { ascending: false })
-      .limit(20)
-      .then(({ data }) => { setLogs(data ?? []); setLoading(false); });
+    async function load() {
+      const { data } = await supabase
+        .from("stock_logs")
+        .select("*")
+        .eq("branch_id", branchId!)
+        .order("created_at", { ascending: false })
+        .limit(20);
+      setLogs(data ?? []);
+      setLoading(false);
+    }
+
+    load();
+
+    // Live updates when stock is added or sold on any device
+    const channel = supabase
+      .channel(`stock_logs:${branchId}`)
+      .on("postgres_changes", { event: "*", schema: "public", table: "stock_logs", filter: `branch_id=eq.${branchId}` }, load)
+      .subscribe();
+
+    return () => { supabase.removeChannel(channel); };
   }, [branchId]);
 
   return { logs, loading };

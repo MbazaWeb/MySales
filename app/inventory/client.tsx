@@ -2,6 +2,7 @@
 import { useMemo, useState, useTransition } from "react";
 import { Search, Plus, X, History, Package, Loader2, AlertCircle } from "lucide-react";
 import { addStockEntry, createProduct } from "@/lib/supabase/actions";
+import { useStockLogs } from "@/lib/supabase/hooks";
 import type { Database } from "@/lib/supabase/types";
 
 type Product  = Database["public"]["Tables"]["products"]["Row"];
@@ -21,6 +22,7 @@ export default function InventoryClient({
   const [modal, setModal]       = useState<"add-stock" | "new-product" | null>(null);
   const [error, setError]       = useState<string | null>(null);
   const [pending, start]        = useTransition();
+  const { logs }                = useStockLogs(branchId);
 
   // Selected product for add-stock modal
   const [selectedId, setSelectedId] = useState(initialProducts[0]?.id ?? "");
@@ -70,11 +72,13 @@ export default function InventoryClient({
     start(async () => {
       const res = await createProduct(fd);
       if ("error" in res && res.error) { setError(res.error); return; }
-      // full reload from server not needed — router.refresh() would work; for now add optimistic placeholder
+      if ("product" in res && res.product) {
+        // Append the created row — no full page reload needed
+        setProducts(ps => [...ps, res.product].sort((a, b) => a.name.localeCompare(b.name)));
+        setSelectedId(res.product.id);
+      }
       setNp({ name: "", category: "", stock: 0, unit: "bottles", price: 0, reorder: 10 });
       setModal(null);
-      // trigger soft refresh
-      window.location.reload();
     });
   }
 
@@ -198,10 +202,30 @@ export default function InventoryClient({
           <span className="text-xs font-semibold" style={{ color: "var(--gold-500)" }}>{showLog ? "Hide" : "Show"}</span>
         </button>
         {showLog && (
-          <p className="mt-4 text-sm text-center py-4" style={{ color: "var(--text-muted)" }}>
-            Stock logs are stored in Supabase and visible in the <code className="text-xs">stock_logs</code> table.
-            Connect the <code className="text-xs">useStockLogs</code> hook from <code className="text-xs">lib/supabase/hooks.ts</code> to display them here.
-          </p>
+          logs.length === 0 ? (
+            <p className="mt-4 text-sm text-center py-4" style={{ color: "var(--text-muted)" }}>
+              No stock movements yet. Add stock or record a sale to see the log.
+            </p>
+          ) : (
+            <ul className="mt-4 divide-y" style={{ borderColor: "var(--border)" }}>
+              {logs.slice(0, 8).map(l => (
+                <li key={l.id} className="flex items-center justify-between gap-3 py-2.5">
+                  <div className="min-w-0">
+                    <b className="block text-sm font-medium truncate">
+                      {products.find(p => p.id === l.product_id)?.name ?? "Product"}
+                    </b>
+                    <span className="text-xs" style={{ color: "var(--text-muted)" }}>
+                      {l.movement_type}{l.note ? ` · ${l.note}` : ""} · {new Date(l.created_at).toLocaleString("en-TZ", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}
+                    </span>
+                  </div>
+                  <span className="shrink-0 text-sm font-semibold"
+                    style={{ color: l.quantity_delta > 0 ? "var(--success, #16A34A)" : "var(--danger, #DC2626)" }}>
+                    {l.quantity_delta > 0 ? "+" : ""}{l.quantity_delta}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          )
         )}
       </section>
 

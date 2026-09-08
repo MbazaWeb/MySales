@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { redirect }        from "next/navigation";
 import { createClient }    from "./server";
+import { bizDayRange }     from "./tz";
 
 // ── Auth ──────────────────────────────────────────────────────────────────────
 
@@ -127,18 +128,22 @@ export async function createProduct(formData: FormData) {
   const supabase = await createClient();
   const branchId = formData.get("branch_id") as string;
 
-  const { error } = await supabase.from("products").insert({
-    branch_id: branchId,
-    name:      formData.get("name")     as string,
-    category:  formData.get("category") as string,
-    stock:     Number(formData.get("stock")),
-    unit:      formData.get("unit")     as string,
-    price:     Number(formData.get("price")),
-    reorder:   Number(formData.get("reorder")),
-  });
+  const { data: product, error } = await supabase
+    .from("products")
+    .insert({
+      branch_id: branchId,
+      name:      formData.get("name")     as string,
+      category:  formData.get("category") as string,
+      stock:     Number(formData.get("stock")),
+      unit:      formData.get("unit")     as string,
+      price:     Number(formData.get("price")),
+      reorder:   Number(formData.get("reorder")),
+    })
+    .select()
+    .single();
   if (error) return { error: error.message };
   revalidatePath("/inventory");
-  return { success: true };
+  return { success: true as const, product };
 }
 
 export async function addStockEntry(formData: FormData) {
@@ -211,12 +216,15 @@ export async function recordSale(formData: FormData) {
 
 export async function getReportSales(branchId: string, from: string, to: string) {
   const supabase = await createClient();
+  // Bounds are pinned to the business timezone (EAT) so a calendar day in
+  // Tanzania is not cut at 21:00 local time by the server's UTC clock.
+  const { gte, lte } = bizDayRange(from, to);
   const { data, error } = await supabase
     .from("sales")
     .select("id, product_name, qty, total, status, payment, created_at")
     .eq("branch_id", branchId)
-    .gte("created_at", from)
-    .lte("created_at", to + "T23:59:59")
+    .gte("created_at", gte)
+    .lte("created_at", lte)
     .order("created_at", { ascending: false });
   if (error) throw new Error(error.message);
   return data ?? [];
@@ -233,19 +241,26 @@ export async function getBusinessData(userId: string) {
     .eq("owner_id", userId)
     .order("created_at");
 
+  // Guard: `.in()` with an empty array is an invalid PostgREST filter.
+  if (!businesses || businesses.length === 0) {
+    return { businesses: [], branches: [], staff: [] };
+  }
+
+  const ids = businesses.map(b => b.id);
+
   const { data: branches } = await supabase
     .from("branches")
     .select("id, name, location, business_id")
-    .in("business_id", (businesses ?? []).map(b => b.id));
+    .in("business_id", ids);
 
   const { data: staffList } = await supabase
     .from("staff")
     .select("id, name, role, branch_id, business_id")
-    .in("business_id", (businesses ?? []).map(b => b.id))
+    .in("business_id", ids)
     .order("name");
 
   return {
-    businesses: businesses ?? [],
+    businesses,
     branches:   branches   ?? [],
     staff:      staffList  ?? [],
   };
@@ -253,14 +268,18 @@ export async function getBusinessData(userId: string) {
 
 export async function addBranch(formData: FormData) {
   const supabase = await createClient();
-  const { error } = await supabase.from("branches").insert({
-    business_id: formData.get("business_id") as string,
-    name:        formData.get("name")        as string,
-    location:    formData.get("location")    as string,
-  });
+  const { data: branch, error } = await supabase
+    .from("branches")
+    .insert({
+      business_id: formData.get("business_id") as string,
+      name:        formData.get("name")        as string,
+      location:    formData.get("location")    as string,
+    })
+    .select()
+    .single();
   if (error) return { error: error.message };
   revalidatePath("/profile");
-  return { success: true };
+  return { success: true as const, branch };
 }
 
 export async function inviteStaff(formData: FormData) {

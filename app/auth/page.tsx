@@ -11,6 +11,7 @@ export default function Auth() {
   const [show, setShow]   = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
+  const [confirmEmail, setConfirmEmail] = useState<string | null>(null);
 
   // Register step-1 fields (held in state so step 2 can submit them together)
   const [reg, setReg] = useState({ full_name: "", email: "", phone: "", password: "" });
@@ -31,6 +32,9 @@ export default function Auth() {
       const result = await signUp(fd);
       if ("error" in result && result.error) {
         setError(result.error);
+      } else if ("requiresEmailConfirmation" in result && result.requiresEmailConfirmation) {
+        // No session yet — redirecting to /dashboard would bounce back to /auth.
+        setConfirmEmail(reg.email);
       } else {
         router.push("/dashboard");
       }
@@ -140,8 +144,32 @@ export default function Auth() {
             </div>
           )}
 
+          {/* Email confirmation notice */}
+          {confirmEmail && (
+            <div className="text-center py-6">
+              <div className="mx-auto mb-4 grid size-14 place-items-center rounded-full"
+                style={{ background: "var(--gold-100)" }}>
+                <Check size={24} style={{ color: "var(--gold-500)" }} />
+              </div>
+              <h2 className="text-xl font-bold mb-2">Check your email</h2>
+              <p className="text-sm mb-1" style={{ color: "var(--text-muted)" }}>
+                We sent a confirmation link to
+              </p>
+              <p className="text-sm font-semibold mb-6">{confirmEmail}</p>
+              <p className="text-xs mb-6" style={{ color: "var(--text-muted)" }}>
+                Click the link to activate your account, then sign in below.
+                Your business “{biz.name}” is already set up and waiting.
+              </p>
+              <button
+                onClick={() => { setMode("login"); setConfirmEmail(null); setError(null); }}
+                className="btn-gold w-full justify-center py-3">
+                Back to sign in
+              </button>
+            </div>
+          )}
+
           {/* ── Register step 1 ── */}
-          {mode === "register" && step === 1 && (
+          {mode === "register" && step === 1 && !confirmEmail && (
             <form onSubmit={e => { e.preventDefault(); setStep(2); }} className="space-y-4">
               <Field label="Full name" placeholder="e.g. David Mbazza"
                 value={reg.full_name} onChange={v => setReg(r => ({ ...r, full_name: v }))} />
@@ -170,7 +198,7 @@ export default function Auth() {
           )}
 
           {/* ── Register step 2 ── */}
-          {mode === "register" && step === 2 && (
+          {mode === "register" && step === 2 && !confirmEmail && (
             <form onSubmit={handleRegisterStep2} className="space-y-4">
               <Field label="Business name" placeholder="e.g. Safari Corner Bar"
                 value={biz.name} onChange={v => setBiz(b => ({ ...b, name: v }))} />
@@ -197,7 +225,7 @@ export default function Auth() {
           )}
 
           {/* ── Login ── */}
-          {mode === "login" && (
+          {mode === "login" && !confirmEmail && (
             <form onSubmit={handleLogin} className="space-y-4">
               <div>
                 <label className="form-label">Email</label>

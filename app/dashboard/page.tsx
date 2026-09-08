@@ -1,7 +1,9 @@
 import { redirect }       from "next/navigation";
+import Link               from "next/link";
 import { ArrowUpRight, Package, ReceiptText, TriangleAlert, WalletCards, TrendingUp } from "lucide-react";
 import AppShell           from "../components/AppShell";
 import { getActiveBranch, getProducts, getSales } from "@/lib/supabase/actions";
+import { BIZ_TZ, dateKeyInBizTz, todayInBizTz } from "@/lib/supabase/tz";
 
 export const dynamic = "force-dynamic";
 
@@ -18,14 +20,10 @@ export default async function Dashboard() {
     getSales(ctx.branch.id),
   ]);
 
-  const revenue    = sales.reduce((a, s) => a + s.total, 0);
   const lowStock   = products.filter(p => p.stock <= p.reorder);
   const totalUnits = products.reduce((a, p) => a + p.stock, 0);
-  const todaySales = sales.filter(s => {
-    const d = new Date(s.created_at);
-    const now = new Date();
-    return d.toDateString() === now.toDateString();
-  });
+  const today = todayInBizTz();
+  const todaySales = sales.filter(s => dateKeyInBizTz(s.created_at) === today);
   const todayRev = todaySales.reduce((a, s) => a + s.total, 0);
 
   // Top sellers by qty this session
@@ -46,7 +44,7 @@ export default async function Dashboard() {
   ];
 
   const now = new Date();
-  const subtitle = `${ctx.branch.name} · ${now.toLocaleDateString("en-TZ", { weekday: "long", day: "numeric", month: "long", year: "numeric" })}`;
+  const subtitle = `${ctx.branch.name} · ${now.toLocaleDateString("en-TZ", { timeZone: BIZ_TZ, weekday: "long", day: "numeric", month: "long", year: "numeric" })}`;
 
   return (
     <AppShell title="Dashboard" subtitle={subtitle} branchId={ctx.branch.id} bizName={ctx.biz.name} userName={ctx.user.user_metadata?.full_name ?? ctx.user.email}>
@@ -63,9 +61,9 @@ export default async function Dashboard() {
               {lowStock.map(p => p.name).join(", ")}
             </p>
           </div>
-          <a href="/inventory" className="text-sm font-semibold whitespace-nowrap" style={{ color: "var(--warning)" }}>
+          <Link href="/inventory" className="text-sm font-semibold whitespace-nowrap" style={{ color: "var(--warning)" }}>
             Review →
-          </a>
+          </Link>
         </div>
       )}
 
@@ -110,17 +108,17 @@ export default async function Dashboard() {
               <h2 className="font-semibold">Recent sales</h2>
               <p className="text-xs mt-0.5" style={{ color: "var(--text-muted)" }}>Latest transactions</p>
             </div>
-            <a href="/sales" className="flex items-center gap-1 text-xs font-semibold" style={{ color: "var(--gold-500)" }}>
+            <Link href="/sales" className="flex items-center gap-1 text-xs font-semibold" style={{ color: "var(--gold-500)" }}>
               View all <ArrowUpRight size={14} />
-            </a>
+            </Link>
           </div>
 
           {sales.length === 0 ? (
             <div className="py-8 text-center" style={{ color: "var(--text-muted)" }}>
               <p className="text-sm">No sales recorded yet.</p>
-              <a href="/sales" className="mt-2 inline-block text-xs font-semibold" style={{ color: "var(--gold-500)" }}>
+              <Link href="/sales" className="mt-2 inline-block text-xs font-semibold" style={{ color: "var(--gold-500)" }}>
                 Record your first sale →
-              </a>
+              </Link>
             </div>
           ) : (
             <div className="divide-y" style={{ borderColor: "var(--border)" }}>
@@ -191,9 +189,9 @@ export default async function Dashboard() {
           {products.length === 0 && (
             <section className="dv-card text-center py-6">
               <p className="text-sm font-medium">No products yet</p>
-              <a href="/inventory" className="mt-1 inline-block text-xs font-semibold" style={{ color: "var(--gold-500)" }}>
+              <Link href="/inventory" className="mt-1 inline-block text-xs font-semibold" style={{ color: "var(--gold-500)" }}>
                 Add your first product →
-              </a>
+              </Link>
             </section>
           )}
         </div>

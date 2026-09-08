@@ -2,6 +2,7 @@ import { redirect }  from "next/navigation";
 import ReportsClient from "./client";
 import AppShell      from "../components/AppShell";
 import { getActiveBranch, getProducts, getReportSales } from "@/lib/supabase/actions";
+import { todayInBizTz } from "@/lib/supabase/tz";
 
 export const dynamic = "force-dynamic";
 
@@ -9,8 +10,8 @@ export default async function ReportsPage() {
   const ctx = await getActiveBranch();
   if (!ctx) redirect("/auth");
 
-  // Default: today
-  const today = new Date().toISOString().slice(0, 10);
+  // Default: today in the business timezone (not the server's UTC clock)
+  const today = todayInBizTz();
 
   const [sales, products] = await Promise.all([
     getReportSales(ctx.branch.id, today, today),

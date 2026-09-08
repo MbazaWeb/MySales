@@ -26,13 +26,14 @@ export default function ProfileClient({
   branches:   Branch[];
   staff:      StaffRow[];
 }) {
-  const fullName  = user.user_metadata?.full_name ?? "—";
+  const fullName: string = user.user_metadata?.full_name ?? "—";
   const email     = user.email ?? "—";
-  const initials  = fullName.split(" ").map((w: string) => w[0]).join("").slice(0, 2).toUpperCase();
+  const initials  = fullName.split(" ").map((w: string) => w.trim()).filter(Boolean).map((w: string) => w[0]).join("").slice(0, 2).toUpperCase();
 
   const [showBranch, setShowBranch] = useState(false);
   const [newBranch, setNewBranch]   = useState({ name: "", location: "", business_id: businesses[0]?.id ?? "" });
   const [branchError, setBranchError] = useState<string | null>(null);
+  const [branchList, setBranchList]   = useState<Branch[]>(branches);
   const [pending, start]            = useTransition();
   const [signOutPending, startSO]   = useTransition();
 
@@ -48,12 +49,16 @@ export default function ProfileClient({
       if ("error" in res && res.error) { setBranchError(res.error); return; }
       setShowBranch(false);
       setNewBranch(b => ({ ...b, name: "", location: "" }));
-      window.location.reload();
+      if ("branch" in res && res.branch) {
+        // Append the created branch — no full page reload needed
+        setBranchList(bs => [...bs, res.branch!]);
+      }
     });
   }
 
   // Group branches by business
   const bizMap = Object.fromEntries(businesses.map(b => [b.id, b]));
+  const branchCount = branchList.length;
 
   return (
     <>
@@ -96,22 +101,22 @@ export default function ProfileClient({
               <div>
                 <h2 className="font-semibold">Branches</h2>
                 <p className="text-xs mt-0.5" style={{ color: "var(--text-muted)" }}>
-                  {branches.length} of 5 slots used
+                  {branchCount} of 5 slots used
                 </p>
               </div>
-              {branches.length < 5 && (
+              {branchCount < 5 && (
                 <button className="btn-gold" onClick={() => setShowBranch(true)}>
                   <Plus size={15} /> Add branch
                 </button>
               )}
             </div>
-            {branches.length === 0 ? (
+            {branchList.length === 0 ? (
               <p className="text-sm py-4 text-center" style={{ color: "var(--text-muted)" }}>
                 No branches yet.
               </p>
             ) : (
               <div className="space-y-2">
-                {branches.map(b => (
+                {branchList.map(b => (
                   <div key={b.id} className="flex items-center justify-between rounded-lg p-3"
                     style={{ border: "1px solid var(--border)" }}>
                     <div className="flex items-center gap-3">
@@ -156,7 +161,7 @@ export default function ProfileClient({
                 <tbody>
                   {staff.map(u => {
                     const branchName = u.branch_id
-                      ? branches.find(b => b.id === u.branch_id)?.name ?? "Unknown"
+                      ? branchList.find(b => b.id === u.branch_id)?.name ?? "Unknown"
                       : "All branches";
                     return (
                       <tr key={u.id}>

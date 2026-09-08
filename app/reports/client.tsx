@@ -2,7 +2,7 @@
 import { useState, useTransition } from "react";
 import {
   CalendarDays, CheckCircle2, Clock3, Download,
-  PackageCheck, Printer, RefreshCw, TrendingUp, Loader2,
+  PackageCheck, Printer, TrendingUp, Loader2,
 } from "lucide-react";
 import { getReportSales } from "@/lib/supabase/actions";
 import type { Database } from "@/lib/supabase/types";

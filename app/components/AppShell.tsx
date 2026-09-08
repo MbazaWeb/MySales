@@ -29,7 +29,7 @@ export default function AppShell({ title, subtitle, children, action, bizName, u
   const [pending, start]    = useTransition();
 
   const initials = (userName ?? "?")
-    .split(" ").map(w => w[0]).join("").slice(0, 2).toUpperCase();
+    .split(" ").map(w => w.trim()).filter(Boolean).map(w => w[0]).join("").slice(0, 2).toUpperCase();
 
   function handleSignOut() {
     start(async () => { await signOut(); });
