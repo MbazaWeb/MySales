@@ -1,20 +1,19 @@
 "use client";
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { ArrowRight, Check, Eye, EyeOff, Gem, AlertCircle, Loader2 } from "lucide-react";
-import { signIn, signUp } from "@/lib/supabase/actions";
+import { ArrowRight, Check, Gem, AlertCircle, Loader2 } from "lucide-react";
+import { sendOtp, verifyOtp } from "@/lib/supabase/actions";
 
 export default function Auth() {
   const router = useRouter();
   const [mode, setMode]   = useState<"login" | "register">("register");
   const [step, setStep]   = useState(1);
-  const [show, setShow]   = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
-  const [confirmEmail, setConfirmEmail] = useState<string | null>(null);
+  const [otpIdentifier, setOtpIdentifier] = useState<string | null>(null);
 
   // Register step-1 fields (held in state so step 2 can submit them together)
-  const [reg, setReg] = useState({ full_name: "", email: "", phone: "", password: "" });
+  const [reg, setReg] = useState({ full_name: "", identifier: "" });
   const [biz, setBiz] = useState({ name: "", type: "Bar", location: "" });
 
   async function handleRegisterStep2(e: React.FormEvent) {
@@ -23,20 +22,15 @@ export default function Auth() {
     startTransition(async () => {
       const fd = new FormData();
       fd.append("full_name", reg.full_name);
-      fd.append("email",     reg.email);
-      fd.append("phone",     reg.phone);
-      fd.append("password",  reg.password);
+      fd.append("identifier", reg.identifier);
       fd.append("biz_name",  biz.name);
       fd.append("biz_type",  biz.type);
       fd.append("biz_loc",   biz.location);
-      const result = await signUp(fd);
+      const result = await sendOtp(fd);
       if ("error" in result && result.error) {
         setError(result.error);
-      } else if ("requiresEmailConfirmation" in result && result.requiresEmailConfirmation) {
-        // No session yet — redirecting to /dashboard would bounce back to /auth.
-        setConfirmEmail(reg.email);
       } else {
-        router.push("/dashboard");
+        setOtpIdentifier(reg.identifier);
       }
     });
   }
@@ -46,12 +40,24 @@ export default function Auth() {
     setError(null);
     const fd = new FormData(e.currentTarget);
     startTransition(async () => {
-      const result = await signIn(fd);
+      const result = await sendOtp(fd);
       if ("error" in result && result.error) {
         setError(result.error);
       } else {
-        router.push("/dashboard");
+        setOtpIdentifier(fd.get("identifier") as string);
       }
+    });
+  }
+
+  async function handleVerify(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    setError(null);
+    const fd = new FormData(e.currentTarget);
+    fd.set("identifier", otpIdentifier ?? "");
+    startTransition(async () => {
+      const result = await verifyOtp(fd);
+      if ("error" in result && result.error) setError(result.error);
+      else router.push("/dashboard");
     });
   }
 
@@ -115,7 +121,7 @@ export default function Auth() {
             {(["register", "login"] as const).map(m => (
               <button
                 key={m}
-                onClick={() => { setMode(m); setStep(1); setError(null); }}
+                onClick={() => { setMode(m); setStep(1); setOtpIdentifier(null); setError(null); }}
                 className="flex-1 rounded-md py-2.5 text-sm font-semibold transition-colors"
                 style={mode === m
                   ? { background: "var(--surface)", color: "var(--navy-700)", boxShadow: "0 1px 4px rgba(0,0,0,0.1)" }
@@ -144,53 +150,44 @@ export default function Auth() {
             </div>
           )}
 
-          {/* Email confirmation notice */}
-          {confirmEmail && (
+          {/* OTP verification */}
+          {otpIdentifier && (
             <div className="text-center py-6">
               <div className="mx-auto mb-4 grid size-14 place-items-center rounded-full"
                 style={{ background: "var(--gold-100)" }}>
                 <Check size={24} style={{ color: "var(--gold-500)" }} />
               </div>
-              <h2 className="text-xl font-bold mb-2">Check your email</h2>
+              <h2 className="text-xl font-bold mb-2">Enter your verification code</h2>
               <p className="text-sm mb-1" style={{ color: "var(--text-muted)" }}>
-                We sent a confirmation link to
+                We sent a six-digit code to
               </p>
-              <p className="text-sm font-semibold mb-6">{confirmEmail}</p>
-              <p className="text-xs mb-6" style={{ color: "var(--text-muted)" }}>
-                Click the link to activate your account, then sign in below.
-                Your business “{biz.name}” is already set up and waiting.
-              </p>
+              <p className="text-sm font-semibold mb-6">{otpIdentifier}</p>
+              <form onSubmit={handleVerify} className="space-y-4 text-left">
+                <div>
+                  <label className="form-label">Verification code</label>
+                  <input name="token" inputMode="numeric" autoComplete="one-time-code"
+                    pattern="[0-9]{6}" maxLength={6} required className="dv-input text-center tracking-[0.35em]"
+                    placeholder="000000" />
+                </div>
+                <button type="submit" disabled={pending} className="btn-gold w-full justify-center py-3">
+                  {pending ? <Loader2 size={17} className="animate-spin" /> : "Verify and continue"}
+                </button>
+              </form>
               <button
-                onClick={() => { setMode("login"); setConfirmEmail(null); setError(null); }}
-                className="btn-gold w-full justify-center py-3">
-                Back to sign in
+                onClick={() => { setOtpIdentifier(null); setError(null); }}
+                className="mt-4 w-full text-sm text-center" style={{ color: "var(--text-muted)" }}>
+                Use a different email or mobile number
               </button>
             </div>
           )}
 
           {/* ── Register step 1 ── */}
-          {mode === "register" && step === 1 && !confirmEmail && (
+          {mode === "register" && step === 1 && !otpIdentifier && (
             <form onSubmit={e => { e.preventDefault(); setStep(2); }} className="space-y-4">
               <Field label="Full name" placeholder="e.g. David Mbazza"
                 value={reg.full_name} onChange={v => setReg(r => ({ ...r, full_name: v }))} />
-              <Field label="Email address" type="email" placeholder="you@email.com"
-                value={reg.email} onChange={v => setReg(r => ({ ...r, email: v }))} />
-              <Field label="Phone number" placeholder="+255 7•• ••• •••"
-                value={reg.phone} onChange={v => setReg(r => ({ ...r, phone: v }))} />
-              <div>
-                <label className="form-label">Password</label>
-                <div className="relative">
-                  <input
-                    type={show ? "text" : "password"} required minLength={8}
-                    className="dv-input pr-11" placeholder="At least 8 characters"
-                    value={reg.password} onChange={e => setReg(r => ({ ...r, password: e.target.value }))}
-                  />
-                  <button type="button" onClick={() => setShow(!show)}
-                    className="absolute right-3 top-2.5" style={{ color: "var(--text-muted)" }}>
-                    {show ? <EyeOff size={18} /> : <Eye size={18} />}
-                  </button>
-                </div>
-              </div>
+              <Field label="Email or mobile number" placeholder="you@email.com or +255 7xx xxx xxx"
+                value={reg.identifier} onChange={v => setReg(r => ({ ...r, identifier: v }))} />
               <button type="submit" className="btn-gold w-full justify-center py-3">
                 Continue <ArrowRight size={17} />
               </button>
@@ -198,7 +195,7 @@ export default function Auth() {
           )}
 
           {/* ── Register step 2 ── */}
-          {mode === "register" && step === 2 && !confirmEmail && (
+          {mode === "register" && step === 2 && !otpIdentifier && (
             <form onSubmit={handleRegisterStep2} className="space-y-4">
               <Field label="Business name" placeholder="e.g. Safari Corner Bar"
                 value={biz.name} onChange={v => setBiz(b => ({ ...b, name: v }))} />
@@ -225,31 +222,16 @@ export default function Auth() {
           )}
 
           {/* ── Login ── */}
-          {mode === "login" && !confirmEmail && (
+          {mode === "login" && !otpIdentifier && (
             <form onSubmit={handleLogin} className="space-y-4">
               <div>
-                <label className="form-label">Email</label>
-                <input name="email" type="email" required className="dv-input" placeholder="you@email.com" />
-              </div>
-              <div>
-                <label className="form-label">Password</label>
-                <div className="relative">
-                  <input name="password" type={show ? "text" : "password"} required
-                    className="dv-input pr-11" placeholder="Your password" />
-                  <button type="button" onClick={() => setShow(!show)}
-                    className="absolute right-3 top-2.5" style={{ color: "var(--text-muted)" }}>
-                    {show ? <EyeOff size={18} /> : <Eye size={18} />}
-                  </button>
-                </div>
+                <label className="form-label">Email or mobile number</label>
+                <input name="identifier" type="text" required className="dv-input"
+                  placeholder="you@email.com or +255 7xx xxx xxx" />
               </div>
               <button type="submit" disabled={pending} className="btn-gold w-full justify-center py-3">
                 {pending ? <Loader2 size={17} className="animate-spin" /> : "Sign in"}
               </button>
-              <a href="/signin-with-chatgpt?return_to=%2Fdashboard" target="_top"
-                className="flex h-11 items-center justify-center rounded-lg border text-sm font-semibold"
-                style={{ borderColor: "var(--border)", color: "var(--text-secondary)" }}>
-                Continue with ChatGPT
-              </a>
             </form>
           )}
         </section>

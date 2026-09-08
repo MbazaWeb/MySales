@@ -7,6 +7,54 @@ import { bizDayRange }     from "./tz";
 
 // ── Auth ──────────────────────────────────────────────────────────────────────
 
+export async function sendOtp(formData: FormData) {
+  const supabase = await createClient();
+  const identifier = (formData.get("identifier") as string | null)?.trim() ?? "";
+  const isEmail = identifier.includes("@");
+
+  if (!identifier || (isEmail && !/^\S+@\S+\.\S+$/.test(identifier))) {
+    return { error: "Enter a valid email address or mobile number." };
+  }
+
+  const data = {
+    full_name: (formData.get("full_name") as string | null)?.trim() ?? "",
+    phone: (formData.get("phone") as string | null)?.trim() ?? (isEmail ? "" : identifier),
+    business_name: (formData.get("biz_name") as string | null)?.trim() ?? "",
+    business_type: (formData.get("biz_type") as string | null)?.trim() ?? "Retail shop",
+    branch_name: (formData.get("biz_name") as string | null)?.trim() ?? "",
+    business_location: (formData.get("biz_loc") as string | null)?.trim() ?? "",
+  };
+
+  const credentials = isEmail
+    ? { email: identifier, options: { data } }
+    : { phone: identifier, options: { data } };
+  const { error } = await supabase.auth.signInWithOtp(credentials);
+
+  if (error) return { error: error.message };
+  return { success: true };
+}
+
+export async function verifyOtp(formData: FormData) {
+  const supabase = await createClient();
+  const identifier = (formData.get("identifier") as string | null)?.trim() ?? "";
+  const token = (formData.get("token") as string | null)?.trim() ?? "";
+  const isEmail = identifier.includes("@");
+
+  if (!identifier || !/^\d{6}$/.test(token)) {
+    return { error: "Enter the six-digit verification code." };
+  }
+
+  const { error } = await supabase.auth.verifyOtp(
+    isEmail
+      ? { email: identifier, token, type: "email" }
+      : { phone: identifier, token, type: "sms" },
+  );
+
+  if (error) return { error: error.message };
+  revalidatePath("/dashboard");
+  return { success: true };
+}
+
 export async function signUp(formData: FormData) {
   const supabase = await createClient();
 
