@@ -11,6 +11,12 @@ const nextConfig: NextConfig = {
       },
     ],
   },
+  // Silence the Supabase cookie warning in dev
+  experimental: {
+    serverActions: {
+      bodySizeLimit: "2mb",
+    },
+  },
 };
 
 export default nextConfig;

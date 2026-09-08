@@ -5,7 +5,7 @@ import {
   MessageSquareText, Plus, ShieldCheck, UserPlus, X, Loader2,
   AlertCircle, Copy, CheckCheck, KeyRound, Shield,
 } from "lucide-react";
-import { addBranchWithStaff, signOut } from "@/lib/supabase/actions";
+import { addBranchWithStaff, signOut, createCheckoutSession } from "@/lib/supabase/actions";
 import type { User } from "@supabase/supabase-js";
 
 type Business = { id: string; name: string; type: string };
@@ -315,28 +315,7 @@ export default function ProfileClient({
           </section>
 
           {/* Plans */}
-          <section className="dv-card">
-            <h2 className="flex items-center gap-2 font-semibold mb-1">
-              <Crown size={17} style={{ color: "var(--gold-500)" }} />
-              Subscription plans
-            </h2>
-            <p className="text-xs mb-4" style={{ color: "var(--text-muted)" }}>Subscribe after your trial ends.</p>
-            <div className="grid grid-cols-2 gap-3">
-              {PLANS.map(p => (
-                <button key={p.period} className="rounded-xl p-3.5 text-left transition-all"
-                  style={{ border: p.best ? "2px solid var(--gold-500)" : "1px solid var(--border)", background: p.best ? "var(--gold-100)" : "var(--surface)" }}>
-                  <b className="block text-xs font-semibold" style={{ color: "var(--text-muted)" }}>{p.period}</b>
-                  <strong className="mt-1.5 block text-base font-bold">{p.price}</strong>
-                  <span className="text-xs" style={{ color: p.best ? "var(--gold-500)" : "var(--text-muted)" }}>{p.note}</span>
-                  {p.best && (
-                    <span className="mt-2 flex items-center gap-1 text-xs font-bold" style={{ color: "var(--navy-700)" }}>
-                      <Check size={12} /> Recommended
-                    </span>
-                  )}
-                </button>
-              ))}
-            </div>
-          </section>
+          <SubscriptionPlans businesses={businesses} />
         </div>
       </div>
 
@@ -514,5 +493,119 @@ export default function ProfileClient({
         </div>
       )}
     </>
+  );
+}
+
+// ── Subscription Plans component ──────────────────────────────────────────────
+function SubscriptionPlans({ businesses }: { businesses: Business[] }) {
+  const [selected, setSelected]   = useState<string | null>(null);
+  const [bizId, setBizId]         = useState(businesses[0]?.id ?? "");
+  const [payError, setPayError]   = useState<string | null>(null);
+  const [paying, startPay]        = useTransition();
+
+  const plans = [
+    { key: "monthly",   period: "Monthly",  price: "TZS 15,000", note: "/ month",    best: false },
+    { key: "quarterly", period: "3 months", price: "TZS 40,000", note: "save 11%",   best: false },
+    { key: "biannual",  period: "6 months", price: "TZS 75,000", note: "save 17%",   best: false },
+    { key: "yearly",    period: "Yearly",   price: "TZS 140,000",note: "best value", best: true  },
+  ];
+
+  function handlePay(e: React.FormEvent) {
+    e.preventDefault();
+    if (!selected) return;
+    setPayError(null);
+    const fd = new FormData();
+    fd.append("plan",        selected);
+    fd.append("business_id", bizId);
+    startPay(async () => {
+      const res = await createCheckoutSession(fd);
+      if ("error" in res && res.error) { setPayError(res.error); return; }
+      if ("payment_link" in res && res.payment_link) {
+        window.location.href = res.payment_link as string;
+      }
+    });
+  }
+
+  return (
+    <section className="dv-card">
+      <h2 className="flex items-center gap-2 font-semibold mb-1">
+        <Crown size={17} style={{ color: "var(--gold-500)" }} />
+        Subscription plans
+      </h2>
+      <p className="text-xs mb-4" style={{ color: "var(--text-muted)" }}>
+        Subscribe to keep your account active after the trial.
+      </p>
+
+      {payError && (
+        <div className="mb-4 flex items-center gap-2 rounded-lg px-3 py-2.5 text-sm"
+          style={{ background: "var(--danger-bg)", color: "var(--danger)", border: "1px solid #FECACA" }}>
+          <AlertCircle size={14} /> {payError}
+        </div>
+      )}
+
+      {businesses.length > 1 && (
+        <div className="mb-4">
+          <label className="form-label">Business</label>
+          <select className="dv-select" value={bizId} onChange={e => setBizId(e.target.value)}>
+            {businesses.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}
+          </select>
+        </div>
+      )}
+
+      <div className="grid grid-cols-2 gap-3 mb-4">
+        {plans.map(p => (
+          <button key={p.key} type="button"
+            onClick={() => setSelected(p.key)}
+            className="rounded-xl p-3.5 text-left transition-all"
+            style={{
+              border:     selected === p.key ? "2px solid var(--navy-700)"
+                          : p.best ? "2px solid var(--gold-500)"
+                          : "1px solid var(--border)",
+              background: selected === p.key ? "var(--navy-700)"
+                          : p.best ? "var(--gold-100)"
+                          : "var(--surface)",
+            }}>
+            <b className="block text-xs font-semibold"
+              style={{ color: selected === p.key ? "rgba(255,255,255,0.6)" : "var(--text-muted)" }}>
+              {p.period}
+            </b>
+            <strong className="mt-1.5 block text-base font-bold"
+              style={{ color: selected === p.key ? "#fff" : "var(--text-primary)" }}>
+              {p.price}
+            </strong>
+            <span className="text-xs"
+              style={{ color: selected === p.key ? "rgba(255,255,255,0.5)" : p.best ? "var(--gold-500)" : "var(--text-muted)" }}>
+              {p.note}
+            </span>
+            {p.best && selected !== p.key && (
+              <span className="mt-2 flex items-center gap-1 text-xs font-bold" style={{ color: "var(--navy-700)" }}>
+                <Check size={12} /> Recommended
+              </span>
+            )}
+            {selected === p.key && (
+              <span className="mt-2 flex items-center gap-1 text-xs font-bold text-white">
+                <Check size={12} /> Selected
+              </span>
+            )}
+          </button>
+        ))}
+      </div>
+
+      <form onSubmit={handlePay}>
+        <button type="submit" disabled={!selected || paying}
+          className="btn-gold w-full justify-center py-3"
+          style={!selected ? { opacity: 0.5, cursor: "not-allowed" } : {}}>
+          {paying
+            ? <><Loader2 size={17} className="animate-spin" /> Redirecting to payment…</>
+            : selected
+            ? `Pay with Flutterwave — ${plans.find(p => p.key === selected)?.price}`
+            : "Select a plan to continue"}
+        </button>
+      </form>
+
+      <p className="text-xs mt-3 text-center" style={{ color: "var(--text-muted)" }}>
+        Payments via Flutterwave · M-Pesa, Airtel Money, card accepted
+      </p>
+    </section>
   );
 }

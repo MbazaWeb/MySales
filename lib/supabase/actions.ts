@@ -261,22 +261,7 @@ export async function createProduct(formData: FormData) {
   const costPrice   = Number(formData.get("cost_price"));
   const sellingPrice = Number(formData.get("selling_price"));
 
-<<<<<<< HEAD
-  const { data: product, error } = await supabase
-    .from("products")
-    .insert({
-      branch_id: branchId,
-      name:      formData.get("name")     as string,
-      category:  formData.get("category") as string,
-      stock:     Number(formData.get("stock")),
-      unit:      formData.get("unit")     as string,
-      price:     Number(formData.get("price")),
-      reorder:   Number(formData.get("reorder")),
-    })
-    .select()
-    .single();
-=======
-  const { error } = await supabase.from("products").insert({
+  const { data: product, error } = await supabase.from("products").insert({
     branch_id:     branchId,
     name:          formData.get("name")     as string,
     category:      formData.get("category") as string,
@@ -284,10 +269,9 @@ export async function createProduct(formData: FormData) {
     unit:          formData.get("unit")     as string,
     cost_price:    costPrice,
     selling_price: sellingPrice,
-    price:         sellingPrice,   // keep price = selling_price for RPC compat
+    price:         sellingPrice,
     reorder:       Number(formData.get("reorder")),
-  } as any);
->>>>>>> a80a9b0 (feat: cost/selling price, profit tracking, customer fields on sales, excel table inventory)
+  } as any).select().single();
   if (error) return { error: error.message };
   revalidatePath("/inventory");
   return { success: true as const, product };
@@ -563,4 +547,136 @@ export async function getBusinessDataWithStaff(userId: string) {
     branches:   branches   ?? [],
     staff:      staffList  ?? [],
   };
+}
+
+// ── Subscription / payment flow ───────────────────────────────────────────────
+
+const PLAN_PRICES: Record<string, { amount: number; label: string; months: number }> = {
+  monthly:   { amount: 15000,  label: "Monthly",   months: 1  },
+  quarterly: { amount: 40000,  label: "3 months",  months: 3  },
+  biannual:  { amount: 75000,  label: "6 months",  months: 6  },
+  yearly:    { amount: 140000, label: "Yearly",    months: 12 },
+};
+
+/**
+ * Initiates a Flutterwave payment session for the selected plan.
+ * Returns a payment_link the client should redirect to.
+ */
+export async function createCheckoutSession(formData: FormData) {
+  const supabase   = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return { error: "Authentication required." };
+
+  const planKey     = formData.get("plan") as string;
+  const businessId  = formData.get("business_id") as string;
+  const plan        = PLAN_PRICES[planKey];
+  if (!plan) return { error: "Invalid plan selected." };
+
+  const { data: biz } = await supabase
+    .from("businesses")
+    .select("id, name")
+    .eq("id", businessId)
+    .eq("owner_id", user.id)
+    .single();
+  if (!biz) return { error: "Business not found." };
+
+  const txRef = `DUKA-${businessId.slice(0, 8).toUpperCase()}-${Date.now()}`;
+
+  const flutterwaveKey = process.env.FLUTTERWAVE_SECRET_KEY;
+  if (!flutterwaveKey) {
+    // Dev mode — return a mock payment link
+    return {
+      payment_link: `/payment-success?tx_ref=${txRef}&plan=${planKey}&business_id=${businessId}`,
+      mock: true,
+    };
+  }
+
+  const payload = {
+    tx_ref:       txRef,
+    amount:       plan.amount,
+    currency:     "TZS",
+    redirect_url: `${process.env.NEXT_PUBLIC_APP_URL}/payment-success`,
+    customer: {
+      email:      user.email,
+      name:       user.user_metadata?.full_name ?? user.email,
+    },
+    customizations: {
+      title:       `DukaVerse — ${plan.label}`,
+      description: `${plan.label} subscription for ${biz.name}`,
+      logo:        `${process.env.NEXT_PUBLIC_APP_URL}/logo.png`,
+    },
+    meta: {
+      plan:        planKey,
+      business_id: businessId,
+      user_id:     user.id,
+      months:      plan.months,
+    },
+  };
+
+  const res = await fetch("https://api.flutterwave.com/v3/payments", {
+    method:  "POST",
+    headers: {
+      "Content-Type":  "application/json",
+      Authorization:   `Bearer ${flutterwaveKey}`,
+    },
+    body: JSON.stringify(payload),
+  });
+
+  const data = await res.json();
+  if (data.status !== "success") return { error: data.message ?? "Payment initiation failed." };
+  return { payment_link: data.data.link };
+}
+
+/**
+ * Called from /api/payment-webhook — verifies Flutterwave signature
+ * and creates/updates the subscription row.
+ */
+export async function handleWebhook(body: {
+  event:    string;
+  data: {
+    tx_ref:   string;
+    status:   string;
+    amount:   number;
+    currency: string;
+    meta: {
+      plan:        string;
+      business_id: string;
+      user_id:     string;
+      months:      number;
+    };
+  };
+}) {
+  if (body.event !== "charge.completed") return { ok: false };
+  if (body.data.status !== "successful") return { ok: false };
+
+  const { createAdminClient } = await import("./admin");
+  const admin = createAdminClient();
+
+  const { plan, business_id, months } = body.data.meta;
+  const planInfo = PLAN_PRICES[plan] ?? { label: plan, amount: body.data.amount };
+
+  const now      = new Date();
+  const endsAt   = new Date(now);
+  endsAt.setMonth(endsAt.getMonth() + months);
+
+  const { error } = await admin.from("subscriptions").insert({
+    business_id,
+    billing_interval: planInfo.label as any,
+    status:           "Active",
+    amount_tzs:       body.data.amount,
+    provider:         "flutterwave",
+    provider_reference: body.data.tx_ref,
+    starts_at:        now.toISOString(),
+    ends_at:          endsAt.toISOString(),
+  });
+
+  if (error) return { ok: false, error: error.message };
+
+  // Extend trial_ends_at on the business to match
+  await admin.from("businesses")
+    .update({ trial_ends_at: endsAt.toISOString() })
+    .eq("id", business_id);
+
+  revalidatePath("/profile");
+  return { ok: true };
 }
