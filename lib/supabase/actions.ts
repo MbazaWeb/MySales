@@ -7,6 +7,33 @@ import { bizDayRange }     from "./tz";
 
 // ── Auth ──────────────────────────────────────────────────────────────────────
 
+/** Map raw Supabase auth errors to messages a business owner can act on. */
+function friendlyAuthError(message: string): string {
+  const m = message.toLowerCase();
+  if (m.includes("rate limit") || m.includes("over_email_send_rate_limit")) {
+    return "Too many verification messages were sent from our side. Please wait about an hour and try again - your details are safe.";
+  }
+  if (m.includes("email_address_invalid") || m.includes("invalid email") || m.includes("email address") && m.includes("invalid")) {
+    return "That email address was not accepted. Please double-check it, or try another email provider (e.g. Gmail).";
+  }
+  if (m.includes("phone") && m.includes("invalid")) {
+    return "That mobile number was not accepted. Please include the country code and try again.";
+  }
+  if (m.includes("already registered") || m.includes("already exists")) {
+    return "An account with this email already exists. Please sign in instead.";
+  }
+  if (m.includes("email not confirmed")) {
+    return "Please confirm your email first - check your inbox for the confirmation link.";
+  }
+  if (m.includes("invalid login credentials")) {
+    return "Wrong email or password. Please try again.";
+  }
+  if (m.includes("token") || m.includes("otp")) {
+    return "That verification code was not accepted. Please check the code and try again.";
+  }
+  return message;
+}
+
 export async function sendOtp(formData: FormData) {
   const supabase = await createClient();
   const identifier = (formData.get("identifier") as string | null)?.trim() ?? "";
@@ -30,7 +57,7 @@ export async function sendOtp(formData: FormData) {
     : { phone: identifier, options: { data } };
   const { error } = await supabase.auth.signInWithOtp(credentials);
 
-  if (error) return { error: error.message };
+  if (error) return { error: friendlyAuthError(error.message) };
   return { success: true };
 }
 
@@ -50,7 +77,7 @@ export async function verifyOtp(formData: FormData) {
       : { phone: identifier, token, type: "sms" },
   );
 
-  if (error) return { error: error.message };
+  if (error) return { error: friendlyAuthError(error.message) };
   revalidatePath("/dashboard");
   return { success: true };
 }
@@ -81,7 +108,7 @@ export async function signUp(formData: FormData) {
       },
     },
   });
-  if (authErr) return { error: authErr.message };
+  if (authErr) return { error: friendlyAuthError(authErr.message) };
 
   if (!authData.user) {
     return { error: "Account creation did not return a user. Please try again." };
@@ -100,7 +127,7 @@ export async function signIn(formData: FormData) {
     email:    formData.get("email")    as string,
     password: formData.get("password") as string,
   });
-  if (error) return { error: error.message };
+  if (error) return { error: friendlyAuthError(error.message) };
   revalidatePath("/dashboard");
   return { success: true };
 }
