@@ -1,5 +1,6 @@
 "use client";
 import { useEffect } from "react";
+import { LanguageProvider } from "./LanguageProvider";
 
 export function ThemeWrapper({ children }: { children: React.ReactNode }) {
   useEffect(() => {
@@ -8,9 +9,8 @@ export function ThemeWrapper({ children }: { children: React.ReactNode }) {
     const theme = saved || (prefersDark ? "dark" : "light");
     document.documentElement.setAttribute("data-theme", theme);
     
-    const lang = localStorage.getItem("dv_language") || "en";
-    document.documentElement.lang = lang;
+
   }, []);
 
-  return <>{children}</>;
+  return <LanguageProvider>{children}</LanguageProvider>;
 }

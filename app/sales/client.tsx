@@ -1,12 +1,14 @@
 "use client";
+import { T, useTranslation } from "@/app/components/LanguageProvider";
+
 import { useMemo, useState, useTransition } from "react";
 import { Plus, Search, X, Loader2, AlertCircle, User, Phone } from "lucide-react";
 import { recordSale } from "@/lib/supabase/client-actions";
 import type { Sale, Product } from "@/lib/supabase/types";
 
 function money(n: number) { return `TZS ${n.toLocaleString("en-TZ")}`; }
-function fmt(iso: string) {
-  return new Date(iso).toLocaleTimeString("en-TZ", { hour: "2-digit", minute: "2-digit" });
+function fmt(iso: string, locale: string) {
+  return new Date(iso).toLocaleTimeString(locale, { hour: "2-digit", minute: "2-digit" });
 }
 
 const MOBILE_PAYMENTS = ["M-Pesa", "Airtel Money", "Mixx by Yas", "Bank Transfer", "Tigopesa"];
@@ -18,6 +20,7 @@ export default function SalesClient({
   products:     Product[];
   branchId:     string;
 }) {
+  const { t: translateUi, locale } = useTranslation();
   const [sales, setSales]         = useState<Sale[]>(initialSales);
   const [show, setShow]           = useState(false);
   const [q, setQ]                 = useState("");
@@ -93,17 +96,16 @@ export default function SalesClient({
         {/* Summary pills */}
         <div className="flex gap-3">
           <div className="rounded-lg px-4 py-2" style={{ background: "var(--surface)", border: "1px solid var(--border)" }}>
-            <p className="text-xs" style={{ color: "var(--text-muted)" }}>Revenue</p>
+            <p className="text-xs" style={{ color: "var(--text-muted)" }}><T text={"Revenue"} /></p>
             <p className="font-bold text-sm">{money(totalRevenue)}</p>
           </div>
           <div className="rounded-lg px-4 py-2" style={{ background: "var(--success-bg)", border: "1px solid #BBF7D0" }}>
-            <p className="text-xs" style={{ color: "var(--success)" }}>Profit</p>
+            <p className="text-xs" style={{ color: "var(--success)" }}><T text={"Profit"} /></p>
             <p className="font-bold text-sm" style={{ color: "var(--success)" }}>{money(totalProfit)}</p>
           </div>
         </div>
         <button className="btn-gold" onClick={() => { setShow(true); setError(null); }}>
-          <Plus size={16} /> New sale
-        </button>
+          <Plus size={16} /> <T text={"New sale"} /> </button>
       </div>
 
       {/* Search */}
@@ -111,7 +113,7 @@ export default function SalesClient({
         style={{ background: "var(--surface)", border: "1px solid var(--border)" }}>
         <Search size={17} style={{ color: "var(--text-muted)" }} />
         <input value={q} onChange={e => setQ(e.target.value)}
-          placeholder="Search by product or customer…"
+          placeholder={translateUi("Search by product or customer…")}
           className="h-11 w-full outline-none bg-transparent text-sm" />
       </div>
 
@@ -119,8 +121,8 @@ export default function SalesClient({
       <div className="dv-card overflow-hidden p-0">
         {sales.length === 0 ? (
           <div className="py-16 text-center" style={{ color: "var(--text-muted)" }}>
-            <p className="font-medium">No sales recorded yet</p>
-            <p className="text-sm mt-1">Record your first sale to see it here.</p>
+            <p className="font-medium"><T text={"No sales recorded yet"} /></p>
+            <p className="text-sm mt-1"><T text={"Record your first sale to see it here."} /></p>
           </div>
         ) : (
           <div className="overflow-x-auto">
@@ -128,15 +130,15 @@ export default function SalesClient({
               <thead>
                 <tr>
                   <th>#</th>
-                  <th>Product</th>
-                  <th style={{ textAlign: "right" }}>Qty</th>
-                  <th style={{ textAlign: "right" }}>Unit price</th>
-                  <th>Payment</th>
-                  <th>Customer</th>
-                  <th>Time</th>
-                  <th>Status</th>
-                  <th style={{ textAlign: "right" }}>Total</th>
-                  <th style={{ textAlign: "right" }}>Profit</th>
+                  <th><T text={"Product"} /></th>
+                  <th style={{ textAlign: "right" }}><T text={"Qty"} /></th>
+                  <th style={{ textAlign: "right" }}><T text={"Unit price"} /></th>
+                  <th><T text={"Payment"} /></th>
+                  <th><T text={"Customer"} /></th>
+                  <th><T text={"Time"} /></th>
+                  <th><T text={"Status"} /></th>
+                  <th style={{ textAlign: "right" }}><T text={"Total"} /></th>
+                  <th style={{ textAlign: "right" }}><T text={"Profit"} /></th>
                 </tr>
               </thead>
               <tbody>
@@ -148,7 +150,7 @@ export default function SalesClient({
                     <td className="font-semibold">{s.product_name}</td>
                     <td style={{ textAlign: "right" }}>{s.qty}</td>
                     <td style={{ textAlign: "right" }}>{money(s.unit_price)}</td>
-                    <td>{s.payment}</td>
+                    <td><T text={s.payment} /></td>
                     <td>
                       {s.customer_name ? (
                         <div>
@@ -161,9 +163,9 @@ export default function SalesClient({
                         <span style={{ color: "var(--text-muted)" }}>—</span>
                       )}
                     </td>
-                    <td style={{ color: "var(--text-muted)", fontSize: "0.8rem" }}>{fmt(s.created_at)}</td>
+                    <td style={{ color: "var(--text-muted)", fontSize: "0.8rem" }}>{fmt(s.created_at, locale)}</td>
                     <td>
-                      <span className={s.status === "Not paid" ? "badge-warn" : "badge-ok"}>{s.status}</span>
+                      <span className={s.status === "Not paid" ? "badge-warn" : "badge-ok"}><T text={s.status} /></span>
                     </td>
                     <td style={{ textAlign: "right", fontWeight: 600 }}>{money(s.total)}</td>
                     <td style={{ textAlign: "right" }}>
@@ -179,9 +181,7 @@ export default function SalesClient({
               </tbody>
             </table>
             {filtered.length === 0 && q && (
-              <div className="py-10 text-center text-sm" style={{ color: "var(--text-muted)" }}>
-                No transactions match your search.
-              </div>
+              <div className="py-10 text-center text-sm" style={{ color: "var(--text-muted)" }}> <T text={"No transactions match your search."} /> </div>
             )}
           </div>
         )}
@@ -192,7 +192,7 @@ export default function SalesClient({
         <div className="modal-overlay" onClick={() => setShow(false)}>
           <div className="modal-sheet" onClick={e => e.stopPropagation()}>
             <div className="flex items-center justify-between mb-6">
-              <h2 className="text-lg font-semibold">Record a sale</h2>
+              <h2 className="text-lg font-semibold"><T text={"Record a sale"} /></h2>
               <button className="btn-ghost px-2 py-2" onClick={() => setShow(false)}>
                 <X size={18} />
               </button>
@@ -200,23 +200,21 @@ export default function SalesClient({
 
             {products.length === 0 && (
               <div className="mb-4 rounded-lg px-4 py-3 text-sm"
-                style={{ background: "var(--warning-bg)", color: "var(--warning)" }}>
-                No products found. Add products in Inventory first.
-              </div>
+                style={{ background: "var(--warning-bg)", color: "var(--warning)" }}> <T text={"No products found. Add products in Inventory first."} /> </div>
             )}
 
             {error && (
               <div className="mb-4 flex items-center gap-3 rounded-lg px-4 py-3"
                 style={{ background: "var(--danger-bg)", border: "1px solid #FECACA" }}>
                 <AlertCircle size={15} style={{ color: "var(--danger)", flexShrink: 0 }} />
-                <p className="text-sm" style={{ color: "var(--danger)" }}>{error}</p>
+                <p className="text-sm" style={{ color: "var(--danger)" }}><T text={error} /></p>
               </div>
             )}
 
             <form onSubmit={handleSave} className="space-y-4">
               {/* Product */}
               <div>
-                <label className="form-label">Product</label>
+                <label className="form-label"><T text={"Product"} /></label>
                 <select className="dv-select" value={productId}
                   onChange={e => setProductId(e.target.value)}
                   disabled={products.length === 0}>
@@ -230,19 +228,19 @@ export default function SalesClient({
 
               {/* Qty */}
               <div>
-                <label className="form-label">Quantity</label>
+                <label className="form-label"><T text={"Quantity"} /></label>
                 <input type="number" min="1" required className="dv-input" value={qty}
                   onChange={e => setQty(+e.target.value)} />
               </div>
 
               {/* Payment */}
               <div>
-                <label className="form-label">Payment method</label>
+                <label className="form-label"><T text={"Payment method"} /></label>
                 <select className="dv-select" value={payment}
                   onChange={e => { setPayment(e.target.value); setCustName(""); setCustPhone(""); }}>
-                  <option>Cash</option>
-                  {MOBILE_PAYMENTS.map(m => <option key={m}>{m}</option>)}
-                  <option>Credit</option>
+                  <option value="Cash"><T text={"Cash"} /></option>
+                  {MOBILE_PAYMENTS.map(m => <option key={m} value={m}><T text={m} /></option>)}
+                  <option value="Credit"><T text={"Credit"} /></option>
                 </select>
               </div>
 
@@ -250,21 +248,20 @@ export default function SalesClient({
               {needsCustomer && (
                 <div className="rounded-lg p-4 space-y-3"
                   style={{ background: "var(--background)", border: "1px solid var(--gold-300)" }}>
-                  <p className="text-xs font-semibold" style={{ color: "var(--gold-500)" }}>
-                    Customer details required for {payment}
+                  <p className="text-xs font-semibold" style={{ color: "var(--gold-500)" }}> <T text={"Customer details required for"} /> <T text={payment} />
                   </p>
                   <div>
                     <label className="form-label flex items-center gap-1">
-                      <User size={13} /> Customer name <span style={{ color: "var(--danger)" }}>*</span>
+                      <User size={13} /> <T text={"Customer name"} /> <span style={{ color: "var(--danger)" }}>*</span>
                     </label>
-                    <input required className="dv-input" placeholder="Full name"
+                    <input required className="dv-input" placeholder={translateUi("Full name")}
                       value={custName} onChange={e => setCustName(e.target.value)} />
                   </div>
                   <div>
                     <label className="form-label flex items-center gap-1">
-                      <Phone size={13} /> Phone number <span style={{ color: "var(--text-muted)", fontWeight: 400 }}>(optional)</span>
+                      <Phone size={13} /> <T text={"Phone number"} /> <span style={{ color: "var(--text-muted)", fontWeight: 400 }}><T text={"(optional)"} /></span>
                     </label>
-                    <input className="dv-input" placeholder="+255 7••  •••  •••"
+                    <input className="dv-input" placeholder={translateUi("+255 7••  •••  •••")}
                       value={custPhone} onChange={e => setCustPhone(e.target.value)} />
                   </div>
                 </div>
@@ -274,21 +271,17 @@ export default function SalesClient({
               {payment === "Credit" && (
                 <div className="rounded-lg p-4 space-y-3"
                   style={{ background: "var(--warning-bg)", border: "1px solid #FDE68A" }}>
-                  <p className="text-xs font-semibold" style={{ color: "var(--warning)" }}>
-                    Credit sale — record customer for follow-up
-                  </p>
+                  <p className="text-xs font-semibold" style={{ color: "var(--warning)" }}> <T text={"Credit sale — record customer for follow-up"} /> </p>
                   <div>
                     <label className="form-label flex items-center gap-1">
-                      <User size={13} /> Customer name
-                    </label>
-                    <input className="dv-input" placeholder="Who owes this payment?"
+                      <User size={13} /> <T text={"Customer name"} /> </label>
+                    <input className="dv-input" placeholder={translateUi("Who owes this payment?")}
                       value={custName} onChange={e => setCustName(e.target.value)} />
                   </div>
                   <div>
                     <label className="form-label flex items-center gap-1">
-                      <Phone size={13} /> Phone number
-                    </label>
-                    <input className="dv-input" placeholder="+255 7••  •••  •••"
+                      <Phone size={13} /> <T text={"Phone number"} /> </label>
+                    <input className="dv-input" placeholder={translateUi("+255 7••  •••  •••")}
                       value={custPhone} onChange={e => setCustPhone(e.target.value)} />
                   </div>
                 </div>
@@ -298,12 +291,12 @@ export default function SalesClient({
               <div className="rounded-lg px-4 py-3"
                 style={{ background: "var(--gold-100)", border: "1px solid var(--gold-300)" }}>
                 <div className="flex justify-between items-center">
-                  <span className="text-sm font-medium" style={{ color: "var(--navy-700)" }}>Total</span>
+                  <span className="text-sm font-medium" style={{ color: "var(--navy-700)" }}><T text={"Total"} /></span>
                   <span className="font-bold text-lg" style={{ color: "var(--navy-700)" }}>{money(lineTotal)}</span>
                 </div>
                 {costPrice > 0 && (
                   <div className="flex justify-between items-center mt-1">
-                    <span className="text-xs" style={{ color: "var(--text-muted)" }}>Profit on this sale</span>
+                    <span className="text-xs" style={{ color: "var(--text-muted)" }}><T text={"Profit on this sale"} /></span>
                     <span className="text-sm font-semibold"
                       style={{ color: lineProfit >= 0 ? "var(--success)" : "var(--danger)" }}>
                       {lineProfit >= 0 ? "+" : ""}{money(lineProfit)}
@@ -314,7 +307,7 @@ export default function SalesClient({
 
               <button type="submit" disabled={pending || products.length === 0}
                 className="btn-gold w-full justify-center py-3">
-                {pending ? <Loader2 size={17} className="animate-spin" /> : "Save sale"}
+                {pending ? <Loader2 size={17} className="animate-spin" /> : <T text={"Save sale"} />}
               </button>
             </form>
           </div>

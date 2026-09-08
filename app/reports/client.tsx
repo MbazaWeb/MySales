@@ -1,4 +1,6 @@
 "use client";
+import { T, useTranslation } from "@/app/components/LanguageProvider";
+
 import { useState, useTransition } from "react";
 import {
   CalendarDays, CheckCircle2, Clock3, Download,
@@ -34,6 +36,7 @@ export default function ReportsClient({
   branchId:     string;
   today:        string;
 }) {
+  const { locale } = useTranslation();
   const [period, setPeriod]   = useState<Period>("Daily");
   const [from, setFrom]       = useState(()=>today.slice(0,7)+"-01");
   const [to, setTo]           = useState(today);
@@ -68,9 +71,9 @@ export default function ReportsClient({
   const low      = products.filter(p=>p.stock<=p.reorder);
 
   const periodLabel =
-    period==="Daily"   ? new Date(today).toLocaleDateString("en-TZ",{day:"numeric",month:"long",year:"numeric"})
+    period==="Daily"   ? new Date(today).toLocaleDateString(locale,{day:"numeric",month:"long",year:"numeric"})
     : period==="Weekly"  ? "This week"
-    : period==="Monthly" ? new Date(today).toLocaleDateString("en-TZ",{month:"long",year:"numeric"})
+    : period==="Monthly" ? new Date(today).toLocaleDateString(locale,{month:"long",year:"numeric"})
     : `${from} – ${to}`;
 
   const cards = [
@@ -100,7 +103,7 @@ export default function ReportsClient({
               <button key={v} onClick={()=>handlePeriodChange(v)}
                 className="whitespace-nowrap rounded-md px-4 py-2 text-sm font-semibold transition-colors"
                 style={period===v?{background:"var(--navy-700)",color:"#fff"}:{color:"var(--text-secondary)"}}>
-                {v}
+                <T text={v} />
               </button>
             ))}
           </div>
@@ -109,7 +112,7 @@ export default function ReportsClient({
             <div className="flex gap-3">
               {([["From",from,setFrom],["To",to,setTo]] as [string,string,(v:string)=>void][]).map(([lbl,val,set])=>((
                 <label key={lbl} className="text-xs font-semibold" style={{color:"var(--text-muted)"}}>
-                  {lbl}
+                  <T text={lbl} />
                   <input type="date" value={val} className="dv-input mt-1 block" style={{width:"auto"}}
                     onChange={e=>{set(e.target.value);loadReport("Custom",lbl==="From"?e.target.value:from,lbl==="To"?e.target.value:to);}}/>
                 </label>
@@ -119,7 +122,7 @@ export default function ReportsClient({
 
           <div className="flex items-center gap-2">
             <CalendarDays size={15} style={{color:"var(--text-muted)"}}/>
-            <span className="text-sm" style={{color:"var(--text-muted)"}}>{periodLabel}</span>
+            <span className="text-sm" style={{color:"var(--text-muted)"}}><T text={periodLabel} /></span>
             {pending&&<Loader2 size={14} className="animate-spin" style={{color:"var(--gold-500)"}}/>}
           </div>
         </div>
@@ -136,9 +139,9 @@ export default function ReportsClient({
           return(
             <article key={c.label} className="rounded-xl px-4 py-4"
               style={{background:bg,border:`1px solid ${c.accent?"var(--navy-500)":"var(--border)"}`}}>
-              <div className="flex justify-between"><span className="text-xs font-medium" style={{color:sc}}>{c.label}</span><I size={16} style={{color:ic}}/></div>
+              <div className="flex justify-between"><span className="text-xs font-medium" style={{color:sc}}><T text={c.label} /></span><I size={16} style={{color:ic}}/></div>
               <strong className="mt-2 block text-xl font-bold tracking-tight" style={{color:tc}}>{c.value}</strong>
-              <span className="mt-1 block text-xs" style={{color:sc}}>{c.sub}</span>
+              <span className="mt-1 block text-xs" style={{color:sc}}><T text={c.sub} /></span>
             </article>
           );
         })}
@@ -151,8 +154,8 @@ export default function ReportsClient({
           <div className="flex items-center justify-between px-5 py-4"
             style={{borderBottom:"1px solid var(--border)"}}>
             <div>
-              <h2 className="font-semibold">Sales breakdown</h2>
-              <p className="text-xs mt-0.5" style={{color:"var(--text-muted)"}}>Paid and outstanding — {periodLabel}</p>
+              <h2 className="font-semibold"><T text={"Sales breakdown"} /></h2>
+              <p className="text-xs mt-0.5" style={{color:"var(--text-muted)"}}><T text={"Paid and outstanding —"} /> <T text={periodLabel} /></p>
             </div>
             <div className="flex gap-2">
               <button className="btn-ghost px-2.5 py-2" onClick={()=>window.print()}><Printer size={16}/></button>
@@ -160,22 +163,22 @@ export default function ReportsClient({
             </div>
           </div>
           {sales.length===0?(
-            <div className="py-12 text-center text-sm" style={{color:"var(--text-muted)"}}>No sales in this period.</div>
+            <div className="py-12 text-center text-sm" style={{color:"var(--text-muted)"}}><T text={"No sales in this period."} /></div>
           ):(
             <table className="dv-table">
               <thead><tr>
-                <th>Product</th><th>Status</th>
-                <th style={{textAlign:"right"}}>Revenue</th>
-                <th style={{textAlign:"right"}}>Profit</th>
+                <th><T text={"Product"} /></th><th><T text={"Status"} /></th>
+                <th style={{textAlign:"right"}}><T text={"Revenue"} /></th>
+                <th style={{textAlign:"right"}}><T text={"Profit"} /></th>
               </tr></thead>
               <tbody>
                 {sales.map(s=>(
                   <tr key={s.id}>
                     <td>
                       <span className="font-semibold block">{s.product_name}</span>
-                      <span className="text-xs" style={{color:"var(--text-muted)"}}>{s.qty} units · {new Date(s.created_at).toLocaleDateString("en-TZ")}</span>
+                      <span className="text-xs" style={{color:"var(--text-muted)"}}>{s.qty} <T text={"units ·"} /> {new Date(s.created_at).toLocaleDateString(locale)}</span>
                     </td>
-                    <td><span className={s.status==="Not paid"?"badge-warn":"badge-ok"}>{s.status}</span></td>
+                    <td><span className={s.status==="Not paid"?"badge-warn":"badge-ok"}><T text={s.status} /></span></td>
                     <td style={{textAlign:"right",fontWeight:600}}>{money(s.total)}</td>
                     <td style={{textAlign:"right"}}>
                       <span style={{color:"var(--success)",fontWeight:600}}>
@@ -191,10 +194,10 @@ export default function ReportsClient({
 
         {/* Stock panel */}
         <section className="dv-card">
-          <h2 className="font-semibold mb-1">Stock availability</h2>
-          <p className="text-xs mb-4" style={{color:"var(--text-muted)"}}>{products.length} products · {units} units</p>
+          <h2 className="font-semibold mb-1"><T text={"Stock availability"} /></h2>
+          <p className="text-xs mb-4" style={{color:"var(--text-muted)"}}>{products.length} <T text={"products ·"} /> {units} <T text={"units"} /></p>
           {products.length===0?(
-            <p className="text-sm text-center py-4" style={{color:"var(--text-muted)"}}>No products yet.</p>
+            <p className="text-sm text-center py-4" style={{color:"var(--text-muted)"}}><T text={"No products yet."} /></p>
           ):(
             <div className="space-y-3">
               {products.slice(0,8).map(p=>(
@@ -204,7 +207,7 @@ export default function ReportsClient({
                     <span className="text-xs" style={{color:"var(--text-muted)"}}>{money(p.stock*(p.selling_price??p.price))}</span>
                   </div>
                   <span className={p.stock<=p.reorder?"badge-warn":"badge-ok"}>
-                    {p.stock} {p.stock<=p.reorder?"Low":"Ok"}
+                    {p.stock} {p.stock<=p.reorder?<T text={"Low"} />:<T text={"Ok"} />}
                   </span>
                 </div>
               ))}
@@ -212,8 +215,8 @@ export default function ReportsClient({
           )}
           {low.length>0&&(
             <div className="mt-5 rounded-lg px-3 py-3 text-sm" style={{background:"var(--warning-bg)"}}>
-              <b style={{color:"var(--warning)"}}>{low.length} items need restocking.</b>
-              <span className="block text-xs mt-0.5" style={{color:"#92400E"}}>Reorder before they run out.</span>
+              <b style={{color:"var(--warning)"}}>{low.length} <T text={"items need restocking."} /></b>
+              <span className="block text-xs mt-0.5" style={{color:"#92400E"}}><T text={"Reorder before they run out."} /></span>
             </div>
           )}
         </section>
@@ -226,8 +229,8 @@ export default function ReportsClient({
           <div className="flex items-center gap-2">
             <History size={17} style={{color:"var(--gold-500)"}}/>
             <div>
-              <h2 className="font-semibold">Stock movement log</h2>
-              <p className="text-xs mt-0.5" style={{color:"var(--text-muted)"}}>All inventory additions and sales deductions</p>
+              <h2 className="font-semibold"><T text={"Stock movement log"} /></h2>
+              <p className="text-xs mt-0.5" style={{color:"var(--text-muted)"}}><T text={"All inventory additions and sales deductions"} /></p>
             </div>
           </div>
           {/* Type filter */}
@@ -236,26 +239,24 @@ export default function ReportsClient({
               <button key={t} onClick={()=>setLogFilter(t)}
                 className="px-3 py-1 rounded-md text-xs font-semibold"
                 style={logFilter===t?{background:"var(--navy-700)",color:"#fff"}:{background:"var(--background)",color:"var(--text-secondary)",border:"1px solid var(--border)"}}>
-                {t}
+                <T text={t} />
               </button>
             ))}
           </div>
         </div>
 
         {filteredLogs.length===0?(
-          <div className="py-10 text-center text-sm" style={{color:"var(--text-muted)"}}>
-            No stock movements yet.
-          </div>
+          <div className="py-10 text-center text-sm" style={{color:"var(--text-muted)"}}> <T text={"No stock movements yet."} /> </div>
         ):(
           <div className="overflow-x-auto">
             <table className="dv-table">
               <thead><tr>
-                <th>Product</th>
-                <th>Type</th>
-                <th style={{textAlign:"right"}}>Change</th>
-                <th style={{textAlign:"right"}}>Balance after</th>
-                <th>Note</th>
-                <th>Date & time</th>
+                <th><T text={"Product"} /></th>
+                <th><T text={"Type"} /></th>
+                <th style={{textAlign:"right"}}><T text={"Change"} /></th>
+                <th style={{textAlign:"right"}}><T text={"Balance after"} /></th>
+                <th><T text={"Note"} /></th>
+                <th><T text={"Date & time"} /></th>
               </tr></thead>
               <tbody>
                 {filteredLogs.map(l=>{
@@ -270,7 +271,7 @@ export default function ReportsClient({
                       <td>
                         <span className="text-xs font-semibold px-2 py-0.5 rounded-full"
                           style={{background:`${typeColor[l.movement_type] ?? "#94A3B8"}18`,color:typeColor[l.movement_type]??"var(--text-muted)"}}>
-                          {l.movement_type}
+                          <T text={l.movement_type} />
                         </span>
                       </td>
                       <td style={{textAlign:"right",fontWeight:700,color:isPositive?"var(--success)":"var(--danger)"}}>
@@ -279,7 +280,7 @@ export default function ReportsClient({
                       <td style={{textAlign:"right",color:"var(--text-secondary)"}}>{l.balance_after}</td>
                       <td style={{color:"var(--text-muted)",fontSize:"0.8rem"}}>{l.note??<span style={{color:"var(--border)"}}>—</span>}</td>
                       <td style={{color:"var(--text-muted)",fontSize:"0.75rem",whiteSpace:"nowrap"}}>
-                        {new Date(l.created_at).toLocaleString("en-TZ",{day:"numeric",month:"short",hour:"2-digit",minute:"2-digit"})}
+                        {new Date(l.created_at).toLocaleString(locale,{day:"numeric",month:"short",hour:"2-digit",minute:"2-digit"})}
                       </td>
                     </tr>
                   );

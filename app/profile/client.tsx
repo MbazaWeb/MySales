@@ -1,4 +1,6 @@
 "use client";
+import { T, useTranslation } from "@/app/components/LanguageProvider";
+
 import { useState, useTransition } from "react";
 import {
   Bell, Building2, Check, Crown, Mail, Eye, EyeOff,
@@ -36,6 +38,7 @@ export default function ProfileClient({
   branches:   Branch[];
   staff:      StaffRow[];
 }) {
+  const { t: translateUi } = useTranslation();
   const fullName = (user.user_metadata?.full_name as string) ?? "—";
   const email    = user.email ?? "—";
   const initials = fullName.split(" ").map((w: string) => w[0]).join("").slice(0, 2).toUpperCase();
@@ -102,19 +105,19 @@ export default function ProfileClient({
             </div>
             <div>
               <h2 className="text-xl font-bold text-white">{fullName}</h2>
-              <p className="text-sm mt-0.5" style={{ color: "rgba(255,255,255,0.5)" }}>Owner · {email}</p>
+              <p className="text-sm mt-0.5" style={{ color: "rgba(255,255,255,0.5)" }}><T text={"Owner ·"} /> {email}</p>
             </div>
           </div>
           <div className="flex items-center gap-3">
             <div className="rounded-lg px-4 py-3"
               style={{ background: "rgba(201,168,76,0.15)", border: "1px solid rgba(201,168,76,0.25)" }}>
-              <b className="block text-sm font-semibold" style={{ color: "var(--gold-500)" }}>Free trial</b>
-              <span className="text-xs" style={{ color: "rgba(255,255,255,0.45)" }}>Active</span>
+              <b className="block text-sm font-semibold" style={{ color: "var(--gold-500)" }}><T text={"Free trial"} /></b>
+              <span className="text-xs" style={{ color: "rgba(255,255,255,0.45)" }}><T text={"Active"} /></span>
             </div>
             <button onClick={() => startSO(async () => { await signOut(); })} disabled={signOutPending}
               className="rounded-lg px-4 py-3 text-sm font-semibold"
               style={{ background: "rgba(255,255,255,0.08)", color: "rgba(255,255,255,0.7)" }}>
-              {signOutPending ? "Signing out…" : "Sign out"}
+              {signOutPending ? <T text={"Signing out…"} /> : <T text={"Sign out"} />}
             </button>
           </div>
         </div>
@@ -127,17 +130,13 @@ export default function ProfileClient({
           <div className="flex items-center justify-between mb-3">
             <div className="flex items-center gap-2">
               <KeyRound size={18} style={{ color: "var(--success)" }} />
-              <h3 className="font-semibold" style={{ color: "var(--success)" }}>
-                Branch account created — save these credentials now
-              </h3>
+              <h3 className="font-semibold" style={{ color: "var(--success)" }}> <T text={"Branch account created — save these credentials now"} /> </h3>
             </div>
             <button onClick={() => setCredentials(null)} style={{ color: "var(--text-muted)" }}>
               <X size={16} />
             </button>
           </div>
-          <p className="text-xs mb-4" style={{ color: "var(--text-muted)" }}>
-            This password will not be shown again. Share it securely with your staff member.
-          </p>
+          <p className="text-xs mb-4" style={{ color: "var(--text-muted)" }}> <T text={"This password will not be shown again. Share it securely with your staff member."} /> </p>
           <div className="grid gap-2 sm:grid-cols-2">
             {[
               { label: "Name",     value: credentials.name,     key: "name" },
@@ -148,8 +147,8 @@ export default function ProfileClient({
               <div key={f.key} className="flex items-center justify-between rounded-lg px-3 py-2.5"
                 style={{ background: "white", border: "1px solid #BBF7D0" }}>
                 <div>
-                  <p className="text-xs font-medium" style={{ color: "var(--text-muted)" }}>{f.label}</p>
-                  <p className="font-semibold text-sm font-mono">{f.value}</p>
+                  <p className="text-xs font-medium" style={{ color: "var(--text-muted)" }}><T text={f.label} /></p>
+                  <p className="font-semibold text-sm font-mono">{f.key === "role" ? <T text={f.value} /> : f.value}</p>
                 </div>
                 <button onClick={() => copyText(f.value, f.key)}
                   className="ml-2 shrink-0 p-1.5 rounded-lg"
@@ -165,7 +164,7 @@ export default function ProfileClient({
               copyText(text, "all");
             }}
             className="btn-gold mt-4 w-full justify-center py-2.5 text-sm">
-            {copied === "all" ? <><CheckCheck size={15} /> Copied!</> : <><Copy size={15} /> Copy all credentials</>}
+            {copied === "all" ? <><CheckCheck size={15} /> <T text={"Copied!"} /></> : <><Copy size={15} /> <T text={"Copy all credentials"} /></>}
           </button>
         </div>
       )}
@@ -177,15 +176,13 @@ export default function ProfileClient({
           <section className="dv-card">
             <div className="flex items-center justify-between mb-5">
               <div>
-                <h2 className="font-semibold">Branches & staff accounts</h2>
+                <h2 className="font-semibold"><T text={"Branches & staff accounts"} /></h2>
                 <p className="text-xs mt-0.5" style={{ color: "var(--text-muted)" }}>
-                  {branches.length} of 5 branches · each with its own login
-                </p>
+                  {branches.length} <T text={"of 5 branches · each with its own login"} /> </p>
               </div>
               {branches.length < 5 && (
                 <button className="btn-gold" onClick={() => { setShowModal(true); setError(null); }}>
-                  <Plus size={15} /> Add branch
-                </button>
+                  <Plus size={15} /> <T text={"Add branch"} /> </button>
               )}
             </div>
 
@@ -193,13 +190,10 @@ export default function ProfileClient({
               <div className="text-center py-8"
                 style={{ border: "2px dashed var(--border)", borderRadius: "0.75rem" }}>
                 <Building2 size={28} style={{ color: "var(--text-muted)", margin: "0 auto 0.75rem" }} />
-                <p className="font-medium text-sm">No branches yet</p>
-                <p className="text-xs mt-1 mb-4" style={{ color: "var(--text-muted)" }}>
-                  Add a branch and create a login for your staff
-                </p>
+                <p className="font-medium text-sm"><T text={"No branches yet"} /></p>
+                <p className="text-xs mt-1 mb-4" style={{ color: "var(--text-muted)" }}> <T text={"Add a branch and create a login for your staff"} /> </p>
                 <button className="btn-gold" onClick={() => { setShowModal(true); setError(null); }}>
-                  <Plus size={15} /> Add first branch
-                </button>
+                  <Plus size={15} /> <T text={"Add first branch"} /> </button>
               </div>
             ) : (
               <div className="space-y-4">
@@ -223,16 +217,13 @@ export default function ProfileClient({
                         </div>
                         <span className="text-xs font-semibold px-2 py-1 rounded-full"
                           style={{ background: "rgba(201,168,76,0.15)", color: "var(--gold-500)" }}>
-                          {branchStaff.length} staff
-                        </span>
+                          {branchStaff.length} <T text={"staff"} /> </span>
                       </div>
 
                       {/* Staff accounts */}
                       <div className="divide-y" style={{ borderColor: "var(--border)" }}>
                         {branchStaff.length === 0 ? (
-                          <p className="px-4 py-3 text-xs text-center" style={{ color: "var(--text-muted)" }}>
-                            No staff account for this branch yet.
-                          </p>
+                          <p className="px-4 py-3 text-xs text-center" style={{ color: "var(--text-muted)" }}> <T text={"No staff account for this branch yet."} /> </p>
                         ) : (
                           branchStaff.map(s => (
                             <div key={s.id} className="flex items-center justify-between px-4 py-3 gap-3">
@@ -243,12 +234,12 @@ export default function ProfileClient({
                                 </div>
                                 <div>
                                   <b className="block text-sm">{s.name}</b>
-                                  <span className="text-xs" style={{ color: "var(--text-muted)" }}>{s.role}</span>
+                                  <span className="text-xs" style={{ color: "var(--text-muted)" }}><T text={s.role} /></span>
                                 </div>
                               </div>
                               <div className="flex items-center gap-2">
                                 <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${s.is_active ? "badge-ok" : "badge-err"}`}>
-                                  {s.is_active ? "Active" : "Inactive"}
+                                  {s.is_active ? <T text={"Active"} /> : <T text={"Inactive"} />}
                                 </span>
                               </div>
                             </div>
@@ -266,7 +257,7 @@ export default function ProfileClient({
           <section className="dv-card">
             <div className="flex items-center gap-2 mb-3">
               <Shield size={16} style={{ color: "var(--gold-500)" }} />
-              <h2 className="font-semibold">Your access</h2>
+              <h2 className="font-semibold"><T text={"Your access"} /></h2>
             </div>
             <div className="flex items-center gap-3 rounded-lg px-3 py-3"
               style={{ background: "var(--background)", border: "1px solid var(--border)" }}>
@@ -279,9 +270,7 @@ export default function ProfileClient({
                 <span className="text-xs" style={{ color: "var(--text-muted)" }}>{email}</span>
               </div>
               <span className="text-xs font-bold px-2.5 py-1 rounded-full"
-                style={{ background: "var(--gold-100)", color: "var(--navy-700)" }}>
-                Owner · All branches
-              </span>
+                style={{ background: "var(--gold-100)", color: "var(--navy-700)" }}> <T text={"Owner · All branches"} /> </span>
             </div>
           </section>
         </div>
@@ -290,9 +279,7 @@ export default function ProfileClient({
           {/* Alerts */}
           <section className="dv-card">
             <h2 className="flex items-center gap-2 font-semibold mb-4">
-              <Bell size={17} style={{ color: "var(--gold-500)" }} />
-              Alerts & summaries
-            </h2>
+              <Bell size={17} style={{ color: "var(--gold-500)" }} /> <T text={"Alerts & summaries"} /> </h2>
             <div className="space-y-2">
               {[
                 { icon: Mail,              label: "Email alerts",  sub: "Low stock & daily report" },
@@ -303,8 +290,8 @@ export default function ProfileClient({
                   style={{ background: "var(--background)", border: "1px solid var(--border)" }}>
                   <item.icon size={17} style={{ color: "var(--gold-500)" }} />
                   <div className="flex-1">
-                    <b className="block text-sm">{item.label}</b>
-                    <span className="text-xs" style={{ color: "var(--text-muted)" }}>{item.sub}</span>
+                    <b className="block text-sm"><T text={item.label} /></b>
+                    <span className="text-xs" style={{ color: "var(--text-muted)" }}><T text={item.sub} /></span>
                   </div>
                   <div className="relative h-5 w-9 rounded-full" style={{ background: "var(--navy-700)" }}>
                     <div className="absolute top-0.5 right-0.5 size-4 rounded-full bg-white" />
@@ -328,10 +315,8 @@ export default function ProfileClient({
             onClick={e => e.stopPropagation()}>
             <div className="flex items-center justify-between mb-5">
               <div>
-                <h2 className="text-lg font-semibold">Add branch</h2>
-                <p className="text-xs mt-0.5" style={{ color: "var(--text-muted)" }}>
-                  Creates the branch and a staff login account in one step
-                </p>
+                <h2 className="text-lg font-semibold"><T text={"Add branch"} /></h2>
+                <p className="text-xs mt-0.5" style={{ color: "var(--text-muted)" }}> <T text={"Creates the branch and a staff login account in one step"} /> </p>
               </div>
               <button className="btn-ghost px-2 py-2" onClick={() => setShowModal(false)}>
                 <X size={18} />
@@ -342,7 +327,7 @@ export default function ProfileClient({
               <div className="mb-4 flex items-center gap-3 rounded-lg px-4 py-3"
                 style={{ background: "var(--danger-bg)", border: "1px solid #FECACA" }}>
                 <AlertCircle size={15} style={{ color: "var(--danger)", flexShrink: 0 }} />
-                <p className="text-sm" style={{ color: "var(--danger)" }}>{error}</p>
+                <p className="text-sm" style={{ color: "var(--danger)" }}><T text={error} /></p>
               </div>
             )}
 
@@ -351,11 +336,11 @@ export default function ProfileClient({
               {/* ── Branch details ── */}
               <div>
                 <p className="text-xs font-bold uppercase tracking-wider mb-3"
-                  style={{ color: "var(--gold-500)" }}>Branch details</p>
+                  style={{ color: "var(--gold-500)" }}><T text={"Branch details"} /></p>
                 <div className="space-y-3">
                   {businesses.length > 1 && (
                     <div>
-                      <label className="form-label">Business</label>
+                      <label className="form-label"><T text={"Business"} /></label>
                       <select className="dv-select" value={form.business_id}
                         onChange={e => setForm(f => ({ ...f, business_id: e.target.value }))}>
                         {businesses.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}
@@ -364,14 +349,14 @@ export default function ProfileClient({
                   )}
                   <div className="grid grid-cols-2 gap-3">
                     <div>
-                      <label className="form-label">Branch name</label>
-                      <input required className="dv-input" placeholder="e.g. Mlandege Grocery"
+                      <label className="form-label"><T text={"Branch name"} /></label>
+                      <input required className="dv-input" placeholder={translateUi("e.g. Mlandege Grocery")}
                         value={form.branch_name}
                         onChange={e => setForm(f => ({ ...f, branch_name: e.target.value }))} />
                     </div>
                     <div>
-                      <label className="form-label">Location</label>
-                      <input required className="dv-input" placeholder="Town or area"
+                      <label className="form-label"><T text={"Location"} /></label>
+                      <input required className="dv-input" placeholder={translateUi("Town or area")}
                         value={form.location}
                         onChange={e => setForm(f => ({ ...f, location: e.target.value }))} />
                     </div>
@@ -384,41 +369,37 @@ export default function ProfileClient({
               {/* ── Staff account ── */}
               <div>
                 <p className="text-xs font-bold uppercase tracking-wider mb-1"
-                  style={{ color: "var(--gold-500)" }}>Staff login account</p>
-                <p className="text-xs mb-3" style={{ color: "var(--text-muted)" }}>
-                  A Supabase auth account will be created. This person can log in at <b>/auth</b> and will only see this branch.
-                </p>
+                  style={{ color: "var(--gold-500)" }}><T text={"Staff login account"} /></p>
+                <p className="text-xs mb-3" style={{ color: "var(--text-muted)" }}> <T text={"A Supabase auth account will be created. This person can log in at"} /> <b>/auth</b> <T text={"and will only see this branch."} /> </p>
                 <div className="space-y-3">
                   <div className="grid grid-cols-2 gap-3">
                     <div>
-                      <label className="form-label">Staff name</label>
-                      <input required className="dv-input" placeholder="Full name"
+                      <label className="form-label"><T text={"Staff name"} /></label>
+                      <input required className="dv-input" placeholder={translateUi("Full name")}
                         value={form.staff_name}
                         onChange={e => setForm(f => ({ ...f, staff_name: e.target.value }))} />
                     </div>
                     <div>
-                      <label className="form-label">Role</label>
+                      <label className="form-label"><T text={"Role"} /></label>
                       <select className="dv-select" value={form.staff_role}
                         onChange={e => setForm(f => ({ ...f, staff_role: e.target.value as any }))}>
-                        {ROLES.map(r => <option key={r}>{r}</option>)}
+                        {ROLES.map(r => <option key={r} value={r}><T text={r} /></option>)}
                       </select>
                     </div>
                   </div>
                   <div>
-                    <label className="form-label">Login email</label>
-                    <input required type="email" className="dv-input" placeholder="staff@email.com"
+                    <label className="form-label"><T text={"Login email"} /></label>
+                    <input required type="email" className="dv-input" placeholder={translateUi("staff@email.com")}
                       value={form.staff_email}
                       onChange={e => setForm(f => ({ ...f, staff_email: e.target.value }))} />
                   </div>
                   <div>
                     <label className="form-label flex items-center justify-between">
-                      <span>Login password</span>
+                      <span><T text={"Login password"} /></span>
                       <button type="button"
                         className="text-xs font-semibold"
                         style={{ color: "var(--gold-500)" }}
-                        onClick={() => setForm(f => ({ ...f, staff_password: genPassword() }))}>
-                        ↻ Regenerate
-                      </button>
+                        onClick={() => setForm(f => ({ ...f, staff_password: genPassword() }))}> <T text={"↻ Regenerate"} /> </button>
                     </label>
                     <div className="relative">
                       <input
@@ -443,9 +424,7 @@ export default function ProfileClient({
                         </button>
                       </div>
                     </div>
-                    <p className="text-xs mt-1" style={{ color: "var(--text-muted)" }}>
-                      Share this with the staff member — they can change it after logging in.
-                    </p>
+                    <p className="text-xs mt-1" style={{ color: "var(--text-muted)" }}> <T text={"Share this with the staff member — they can change it after logging in."} /> </p>
                   </div>
                 </div>
               </div>
@@ -453,40 +432,38 @@ export default function ProfileClient({
               {/* Role permissions info */}
               <div className="rounded-lg px-4 py-3 space-y-2"
                 style={{ background: "var(--background)", border: "1px solid var(--border)" }}>
-                <p className="text-xs font-semibold" style={{ color: "var(--text-primary)" }}>
-                  What can a <span style={{ color: "var(--navy-700)" }}>{form.staff_role}</span> do?
-                </p>
+                <p className="text-xs font-semibold" style={{ color: "var(--text-primary)" }}> <T text={"What can a"} /> <span style={{ color: "var(--navy-700)" }}><T text={form.staff_role} /></span> <T text={"do?"} /> </p>
                 {form.staff_role === "Manager" && (
                   <ul className="text-xs space-y-1" style={{ color: "var(--text-muted)" }}>
-                    <li>✓ Record sales</li>
-                    <li>✓ Add and update inventory</li>
-                    <li>✓ View branch reports</li>
-                    <li>✗ Cannot see other branches</li>
-                    <li>✗ Cannot manage staff</li>
+                    <li><T text={"✓ Record sales"} /></li>
+                    <li><T text={"✓ Add and update inventory"} /></li>
+                    <li><T text={"✓ View branch reports"} /></li>
+                    <li><T text={"✗ Cannot see other branches"} /></li>
+                    <li><T text={"✗ Cannot manage staff"} /></li>
                   </ul>
                 )}
                 {form.staff_role === "Cashier" && (
                   <ul className="text-xs space-y-1" style={{ color: "var(--text-muted)" }}>
-                    <li>✓ Record sales</li>
-                    <li>✓ View inventory levels</li>
-                    <li>✗ Cannot add or edit products</li>
-                    <li>✗ Cannot see other branches</li>
+                    <li><T text={"✓ Record sales"} /></li>
+                    <li><T text={"✓ View inventory levels"} /></li>
+                    <li><T text={"✗ Cannot add or edit products"} /></li>
+                    <li><T text={"✗ Cannot see other branches"} /></li>
                   </ul>
                 )}
                 {form.staff_role === "Stock keeper" && (
                   <ul className="text-xs space-y-1" style={{ color: "var(--text-muted)" }}>
-                    <li>✓ Add and update inventory</li>
-                    <li>✓ View stock levels</li>
-                    <li>✗ Cannot record sales</li>
-                    <li>✗ Cannot see other branches</li>
+                    <li><T text={"✓ Add and update inventory"} /></li>
+                    <li><T text={"✓ View stock levels"} /></li>
+                    <li><T text={"✗ Cannot record sales"} /></li>
+                    <li><T text={"✗ Cannot see other branches"} /></li>
                   </ul>
                 )}
               </div>
 
               <button type="submit" disabled={pending} className="btn-gold w-full justify-center py-3">
                 {pending
-                  ? <><Loader2 size={17} className="animate-spin" /> Creating branch & account…</>
-                  : <><UserPlus size={17} /> Create branch & staff account</>}
+                  ? <><Loader2 size={17} className="animate-spin" /> <T text={"Creating branch & account…"} /></>
+                  : <><UserPlus size={17} /> <T text={"Create branch & staff account"} /></>}
               </button>
             </form>
           </div>
@@ -527,23 +504,19 @@ function SubscriptionPlans({ businesses }: { businesses: Business[] }) {
   return (
     <section className="dv-card">
       <h2 className="flex items-center gap-2 font-semibold mb-1">
-        <Crown size={17} style={{ color: "var(--gold-500)" }} />
-        Subscription plans
-      </h2>
-      <p className="text-xs mb-4" style={{ color: "var(--text-muted)" }}>
-        Subscribe to keep your account active after the trial.
-      </p>
+        <Crown size={17} style={{ color: "var(--gold-500)" }} /> <T text={"Subscription plans"} /> </h2>
+      <p className="text-xs mb-4" style={{ color: "var(--text-muted)" }}> <T text={"Subscribe to keep your account active after the trial."} /> </p>
 
       {payError && (
         <div className="mb-4 flex items-center gap-2 rounded-lg px-3 py-2.5 text-sm"
           style={{ background: "var(--danger-bg)", color: "var(--danger)", border: "1px solid #FECACA" }}>
-          <AlertCircle size={14} /> {payError}
+          <AlertCircle size={14} /> <T text={payError} />
         </div>
       )}
 
       {businesses.length > 1 && (
         <div className="mb-4">
-          <label className="form-label">Business</label>
+          <label className="form-label"><T text={"Business"} /></label>
           <select className="dv-select" value={bizId} onChange={e => setBizId(e.target.value)}>
             {businesses.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}
           </select>
@@ -565,7 +538,7 @@ function SubscriptionPlans({ businesses }: { businesses: Business[] }) {
             }}>
             <b className="block text-xs font-semibold"
               style={{ color: selected === p.key ? "rgba(255,255,255,0.6)" : "var(--text-muted)" }}>
-              {p.period}
+              <T text={p.period} />
             </b>
             <strong className="mt-1.5 block text-base font-bold"
               style={{ color: selected === p.key ? "#fff" : "var(--text-primary)" }}>
@@ -573,17 +546,15 @@ function SubscriptionPlans({ businesses }: { businesses: Business[] }) {
             </strong>
             <span className="text-xs"
               style={{ color: selected === p.key ? "rgba(255,255,255,0.5)" : p.best ? "var(--gold-500)" : "var(--text-muted)" }}>
-              {p.note}
+              <T text={p.note} />
             </span>
             {p.best && selected !== p.key && (
               <span className="mt-2 flex items-center gap-1 text-xs font-bold" style={{ color: "var(--navy-700)" }}>
-                <Check size={12} /> Recommended
-              </span>
+                <Check size={12} /> <T text={"Recommended"} /> </span>
             )}
             {selected === p.key && (
               <span className="mt-2 flex items-center gap-1 text-xs font-bold text-white">
-                <Check size={12} /> Selected
-              </span>
+                <Check size={12} /> <T text={"Selected"} /> </span>
             )}
           </button>
         ))}
@@ -594,16 +565,14 @@ function SubscriptionPlans({ businesses }: { businesses: Business[] }) {
           className="btn-gold w-full justify-center py-3"
           style={!selected ? { opacity: 0.5, cursor: "not-allowed" } : {}}>
           {paying
-            ? <><Loader2 size={17} className="animate-spin" /> Processing…</>
+            ? <><Loader2 size={17} className="animate-spin" /> <T text={"Processing…"} /></>
             : selected
             ? `Subscribe — ${plans.find(p => p.key === selected)?.price}`
-            : "Select a plan to continue"}
+            : <T text={"Select a plan to continue"} />}
         </button>
       </form>
 
-      <p className="text-xs mt-3 text-center" style={{ color: "var(--text-muted)" }}>
-        Pesapal · M-Pesa TZ, Airtel Money, Tigo Pesa, Halo Pesa, card
-      </p>
+      <p className="text-xs mt-3 text-center" style={{ color: "var(--text-muted)" }}> <T text={"Pesapal · M-Pesa TZ, Airtel Money, Tigo Pesa, Halo Pesa, card"} /> </p>
     </section>
   );
 }

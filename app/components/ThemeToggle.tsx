@@ -1,10 +1,13 @@
 "use client";
+import { useTranslation } from "@/app/components/LanguageProvider";
+
 import { useState, useEffect } from "react";
 import { Moon, Sun } from "lucide-react";
 
 type Theme = "light" | "dark";
 
 export function ThemeToggle() {
+  const { t: translateUi } = useTranslation();
   const [theme, setTheme] = useState<Theme>("light");
 
   useEffect(() => {
@@ -36,7 +39,7 @@ export function ThemeToggle() {
         border: "1px solid var(--border)",
         color: "var(--text-secondary)",
       }}
-      aria-label="Toggle theme"
+      aria-label={translateUi("Toggle theme")}
     >
       {theme === "light" ? (
         <Moon size={18} />

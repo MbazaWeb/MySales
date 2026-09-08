@@ -1,31 +1,22 @@
 "use client";
-import { useState, useEffect } from "react";
+import { useState } from "react";
+import { useTranslation } from "./LanguageProvider";
+import type { Language } from "../i18n";
 import { Languages, ChevronDown } from "lucide-react";
 
-type Language = "en" | "sw";
+
 
 interface LanguageToggleProps {
   className?: string;
 }
 
 export function LanguageToggle({ className }: LanguageToggleProps) {
-  const [language, setLanguage] = useState<Language>("en");
+  const { lang: language, setLanguage } = useTranslation();
   const [open, setOpen] = useState(false);
-
-  useEffect(() => {
-    const saved = localStorage.getItem("dv_language") as Language;
-    if (saved && (saved === "en" || saved === "sw")) {
-      setLanguage(saved);
-      document.documentElement.lang = saved;
-    }
-  }, []);
 
   const toggleLanguage = (lang: Language) => {
     setLanguage(lang);
-    localStorage.setItem("dv_language", lang);
-    document.documentElement.lang = lang;
     setOpen(false);
-    window.dispatchEvent(new Event("languagechange"));
   };
 
   const labels: Record<Language, string> = {
@@ -36,6 +27,9 @@ export function LanguageToggle({ className }: LanguageToggleProps) {
   return (
     <div className={["relative", className].filter(Boolean).join(" ")}>
       <button
+        type="button"
+        aria-label={language === "sw" ? "Chagua lugha" : "Choose language"}
+        aria-expanded={open}
         onClick={() => setOpen(!open)}
         className="flex items-center gap-1.5 rounded-lg px-3 py-2 text-sm font-medium transition-colors"
         style={{
@@ -65,6 +59,8 @@ export function LanguageToggle({ className }: LanguageToggleProps) {
             {(["en", "sw"] as Language[]).map((lang) => (
               <button
                 key={lang}
+                type="button"
+                aria-pressed={language === lang}
                 onClick={() => toggleLanguage(lang)}
                 className="w-full px-4 py-2.5 text-sm text-left transition-colors hover:bg-muted"
                 style={{
@@ -86,27 +82,5 @@ export function LanguageToggle({ className }: LanguageToggleProps) {
   );
 }
 
-export function useTranslation() {
-  const [lang, setLang] = useState<Language>("en");
 
-  useEffect(() => {
-    const saved = localStorage.getItem("dv_language") as Language;
-    if (saved && (saved === "en" || saved === "sw")) {
-      setLang(saved);
-    }
-    const handler = () => {
-      const current = localStorage.getItem("dv_language") as Language;
-      if (current && (current === "en" || current === "sw")) {
-        setLang(current);
-      }
-    };
-    window.addEventListener("languagechange", handler);
-    return () => window.removeEventListener("languagechange", handler);
-  }, []);
-
-  const t = (en: string, sw: string): string => {
-    return lang === "sw" ? sw : en;
-  };
-
-  return { t, lang };
-}
+export { useTranslation } from "./LanguageProvider";

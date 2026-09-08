@@ -12,16 +12,7 @@ export default async function InventoryPage() {
 
   const products = await getProducts(ctx.branch.id);
 
-  const currentTime = new Date().toLocaleString("en-TZ", {
-    timeZone: BIZ_TZ,
-    weekday: "short",
-    day: "numeric",
-    month: "short",
-    year: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-    second: "2-digit"
-  });
+  const currentTime = new Date().toISOString();
 
   return (
     <AppShell
