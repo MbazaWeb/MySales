@@ -9,7 +9,9 @@ export default function Auth() {
   const [mode, setMode]   = useState<"login" | "register">("register");
   const [step, setStep]   = useState(1);
   const [error, setError] = useState<string | null>(null);
+  const [resendNote, setResendNote] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
+  const [resendPending, startResendTransition] = useTransition();
   const [otpIdentifier, setOtpIdentifier] = useState<string | null>(null);
 
   // Register step-1 fields (held in state so step 2 can submit them together)
@@ -36,6 +38,7 @@ export default function Auth() {
       if ("error" in result && result.error) {
         setError(result.error);
       } else {
+        setResendNote(null);
         setOtpIdentifier(reg.identifier);
       }
     });
@@ -50,6 +53,7 @@ export default function Auth() {
       if ("error" in result && result.error) {
         setError(result.error);
       } else {
+        setResendNote(null);
         setOtpIdentifier(fd.get("identifier") as string);
       }
     });
@@ -64,6 +68,28 @@ export default function Auth() {
       const result = await verifyOtp(fd);
       if ("error" in result && result.error) setError(result.error);
       else router.push("/dashboard");
+    });
+  }
+
+  async function handleResend() {
+    if (!otpIdentifier) return;
+    setError(null);
+    setResendNote(null);
+    const fd = new FormData();
+    fd.set("identifier", otpIdentifier);
+    if (mode === "register") {
+      fd.set("full_name", reg.full_name);
+      fd.set("biz_name", biz.name);
+      fd.set("biz_type", biz.type);
+      fd.set("biz_loc", biz.location);
+    }
+    startResendTransition(async () => {
+      const result = await sendOtp(fd);
+      if ("error" in result && result.error) {
+        setError(result.error);
+      } else {
+        setResendNote("We sent a new email. Check your inbox and spam folder.");
+      }
     });
   }
 
@@ -125,7 +151,7 @@ export default function Auth() {
             {(["register", "login"] as const).map(m => (
               <button
                 key={m}
-                onClick={() => { setMode(m); setStep(1); setOtpIdentifier(null); setError(null); }}
+                onClick={() => { setMode(m); setStep(1); setOtpIdentifier(null); setError(null); setResendNote(null); }}
                 className="flex-1 rounded-md py-2.5 text-sm font-semibold transition-colors"
                 style={mode === m
                   ? { background: "var(--surface)", color: "var(--navy-700)", boxShadow: "0 1px 4px rgba(0,0,0,0.1)" }
@@ -181,9 +207,22 @@ export default function Auth() {
                   {pending ? <Loader2 size={17} className="animate-spin" /> : "Verify and continue"}
                 </button>
               </form>
+              {resendNote && (
+                <p className="mt-4 text-xs font-medium" style={{ color: "var(--success)" }}>
+                  {resendNote}
+                </p>
+              )}
               <button
-                onClick={() => { setOtpIdentifier(null); setError(null); }}
-                className="mt-4 w-full text-sm text-center" style={{ color: "var(--text-muted)" }}>
+                type="button"
+                onClick={handleResend}
+                disabled={resendPending}
+                className="mt-4 w-full text-sm font-semibold text-center"
+                style={{ color: "var(--gold-500)" }}>
+                {resendPending ? "Sending..." : "Didn't receive it? Resend code"}
+              </button>
+              <button
+                onClick={() => { setOtpIdentifier(null); setError(null); setResendNote(null); }}
+                className="mt-3 w-full text-sm text-center" style={{ color: "var(--text-muted)" }}>
                 Use a different email or mobile number
               </button>
             </div>
