@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { headers }        from "next/headers";
 import { redirect }        from "next/navigation";
 import { createClient }    from "./server";
 import { bizDayRange }     from "./tz";
@@ -34,6 +35,18 @@ function friendlyAuthError(message: string): string {
   return message;
 }
 
+async function getAuthRedirectTo() {
+  const headerStore = await headers();
+  const requestOrigin = headerStore.get("origin");
+  const configuredOrigin = process.env.NEXT_PUBLIC_SITE_URL;
+  const vercelOrigin = process.env.VERCEL_URL
+    ? `https://${process.env.VERCEL_URL}`
+    : null;
+  const origin = requestOrigin ?? configuredOrigin ?? vercelOrigin;
+
+  return origin ? `${origin}/auth/callback?next=/dashboard` : undefined;
+}
+
 export async function sendOtp(formData: FormData) {
   const supabase = await createClient();
   const identifier = (formData.get("identifier") as string | null)?.trim() ?? "";
@@ -52,8 +65,9 @@ export async function sendOtp(formData: FormData) {
     business_location: (formData.get("biz_loc") as string | null)?.trim() ?? "",
   };
 
+  const emailRedirectTo = await getAuthRedirectTo();
   const credentials = isEmail
-    ? { email: identifier, options: { data } }
+    ? { email: identifier, options: { data, emailRedirectTo } }
     : { phone: identifier, options: { data } };
   const { error } = await supabase.auth.signInWithOtp(credentials);
 

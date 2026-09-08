@@ -1,5 +1,5 @@
 "use client";
-import { useState, useTransition } from "react";
+import { useEffect, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { ArrowRight, Check, AlertCircle, Loader2 } from "lucide-react";
 import { sendOtp, verifyOtp } from "@/lib/supabase/actions";
@@ -15,6 +15,12 @@ export default function Auth() {
   // Register step-1 fields (held in state so step 2 can submit them together)
   const [reg, setReg] = useState({ full_name: "", identifier: "" });
   const [biz, setBiz] = useState({ name: "", type: "Bar", location: "" });
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const callbackError = params.get("error");
+    if (callbackError) setError(callbackError);
+  }, []);
 
   async function handleRegisterStep2(e: React.FormEvent) {
     e.preventDefault();
@@ -131,10 +137,11 @@ export default function Auth() {
           </div>
 
           <h1 className="text-2xl font-bold mb-1">
-            {mode === "login" ? "Welcome back" : step === 1 ? "Start your free trial" : "Your business details"}
+            {otpIdentifier ? "Check your email" : mode === "login" ? "Welcome back" : step === 1 ? "Start your free trial" : "Your business details"}
           </h1>
           <p className="text-sm mb-7" style={{ color: "var(--text-muted)" }}>
-            {mode === "login" ? "Continue managing your businesses."
+            {otpIdentifier ? "Use the email link or enter the six-digit code."
+              : mode === "login" ? "Continue managing your businesses."
               : step === 1 ? "14 days free, no credit card required."
               : "Your first branch will be created automatically."}
           </p>
@@ -155,11 +162,14 @@ export default function Auth() {
                 style={{ background: "var(--gold-100)" }}>
                 <Check size={24} style={{ color: "var(--gold-500)" }} />
               </div>
-              <h2 className="text-xl font-bold mb-2">Enter your verification code</h2>
+              <h2 className="text-xl font-bold mb-2">Check your inbox</h2>
               <p className="text-sm mb-1" style={{ color: "var(--text-muted)" }}>
-                We sent a six-digit code to
+                We sent a sign-in email to
               </p>
-              <p className="text-sm font-semibold mb-6">{otpIdentifier}</p>
+              <p className="text-sm font-semibold mb-3">{otpIdentifier}</p>
+              <p className="mx-auto mb-6 max-w-sm text-xs leading-relaxed" style={{ color: "var(--text-muted)" }}>
+                Click the link in the email, or enter the six-digit code if your email includes one.
+              </p>
               <form onSubmit={handleVerify} className="space-y-4 text-left">
                 <div>
                   <label className="form-label">Verification code</label>
