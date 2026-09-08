@@ -1,7 +1,7 @@
 "use client";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { LayoutDashboard, ReceiptText, Package, FileBarChart, UserRound, Menu, ChevronDown, Gem, LogOut } from "lucide-react";
+import { LayoutDashboard, ReceiptText, Package, FileBarChart, UserRound, Menu, ChevronDown, LogOut } from "lucide-react";
 import { useState, useTransition } from "react";
 import { signOut } from "@/lib/supabase/actions";
 
@@ -44,8 +44,8 @@ export default function AppShell({ title, subtitle, children, action, bizName, u
 
         {/* Brand */}
         <div className="flex items-center gap-3 px-5 py-5" style={{ borderBottom: "1px solid rgba(255,255,255,0.07)" }}>
-          <div className="grid size-9 place-items-center rounded-lg" style={{ background: "var(--gold-500)" }}>
-            <Gem size={18} style={{ color: "var(--navy-900)" }} />
+          <div className="grid size-9 place-items-center rounded-lg" style={{ background: "rgba(255,255,255,0.06)" }}>
+            <img src="/logo.png" alt="" className="size-7 object-contain" />
           </div>
           <div>
             <span className="block font-bold text-white text-base tracking-tight">DukaVerse</span>

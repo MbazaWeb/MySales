@@ -1,0 +1,22 @@
+{
+  "name": "DukaVerse",
+  "short_name": "DukaVerse",
+  "description": "Multi-branch sales and inventory management",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0F1B2D",
+  "theme_color": "#0F1B2D",
+  "icons": [
+    {
+      "src": "/app-icon.png",
+      "sizes": "1254x1254",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/apple-touch-icon.png",
+      "sizes": "1254x1254",
+      "type": "image/png"
+    }
+  ]
+}

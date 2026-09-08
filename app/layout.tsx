@@ -5,7 +5,15 @@ export const metadata: Metadata = {
   title: "DukaVerse",
   description: "Multi-branch sales and inventory management",
   other: { "codex-preview": "development" },
-  icons: { icon: "/favicon.svg", shortcut: "/favicon.svg" },
+  manifest: "/manifest.json",
+  icons: {
+    icon: [
+      { url: "/favicon.png", type: "image/png" },
+      { url: "/app-icon.png", type: "image/png", sizes: "1254x1254" },
+    ],
+    shortcut: "/favicon.png",
+    apple: "/apple-touch-icon.png",
+  },
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

@@ -1,7 +1,7 @@
 "use client";
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { ArrowRight, Check, Gem, AlertCircle, Loader2 } from "lucide-react";
+import { ArrowRight, Check, AlertCircle, Loader2 } from "lucide-react";
 import { sendOtp, verifyOtp } from "@/lib/supabase/actions";
 
 export default function Auth() {
@@ -76,9 +76,7 @@ export default function Auth() {
           style={{ background: "var(--navy-900)" }}
         >
           <div className="flex items-center gap-3">
-            <div className="grid size-10 place-items-center rounded-xl" style={{ background: "var(--gold-500)" }}>
-              <Gem size={20} style={{ color: "var(--navy-900)" }} />
-            </div>
+            <img src="/logo.png" alt="" className="size-10 object-contain" />
             <span className="text-2xl font-bold text-white tracking-tight">DukaVerse</span>
           </div>
 
@@ -110,9 +108,9 @@ export default function Auth() {
         <section className="p-7 sm:p-10">
           {/* Mobile logo */}
           <div className="mb-8 flex items-center gap-3 lg:hidden">
-            <div className="grid size-9 place-items-center rounded-xl" style={{ background: "var(--navy-700)" }}>
-              <Gem size={18} style={{ color: "var(--gold-500)" }} />
-            </div>
+            <span className="grid size-9 place-items-center rounded-xl" style={{ background: "var(--navy-700)" }}>
+              <img src="/logo.png" alt="" className="size-7 object-contain" />
+            </span>
             <span className="text-xl font-bold">DukaVerse</span>
           </div>
 
