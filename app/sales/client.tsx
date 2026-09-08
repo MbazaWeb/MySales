@@ -43,11 +43,8 @@ export default function SalesClient({
     setError(null);
     const fd = new FormData();
     fd.append("product_id",   productId);
-    fd.append("product_name", selectedProduct.name);
     fd.append("qty",          String(qty));
-    fd.append("price",        String(selectedProduct.price));
     fd.append("payment",      payment);
-    fd.append("branch_id",    branchId);
     start(async () => {
       const res = await recordSale(fd);
       if ("error" in res && res.error) { setError(res.error); return; }
@@ -58,6 +55,7 @@ export default function SalesClient({
         product_id:   productId,
         product_name: selectedProduct.name,
         qty,
+        unit_price:   selectedProduct.price,
         total:        lineTotal,
         payment,
         status:       payment === "Credit" ? "Not paid" : "Paid",

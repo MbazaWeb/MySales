@@ -29,19 +29,19 @@ yarn-error.log*
 
 # env files
 .env*
-!.env
+!.env.example
 
 # vercel
 .vercel
 
 # typescript
 next-env.d.ts
+*.tsbuildinfo
 /dist/
 /.wrangler/
 /.sites-runtime/
 /outputs/
 /work/
--e 
 # Local env
 .env.local
 .env.*.local

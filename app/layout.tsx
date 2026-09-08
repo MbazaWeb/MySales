@@ -4,6 +4,7 @@ import "./globals.css";
 export const metadata: Metadata = {
   title: "DukaVerse",
   description: "Multi-branch sales and inventory management",
+  other: { "codex-preview": "development" },
   icons: { icon: "/favicon.svg", shortcut: "/favicon.svg" },
 };
 
