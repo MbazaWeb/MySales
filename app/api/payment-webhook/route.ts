@@ -60,7 +60,7 @@ export async function GET(req: NextRequest) {
 
         await admin
           .from("businesses")
-          .update({ trial_ends_at: endsAt.toISOString() })
+          .update({ trial_ends_at: endsAt.toISOString() } as any)
           .eq("id", businessId);
       }
     }
