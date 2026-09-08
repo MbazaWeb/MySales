@@ -17,8 +17,8 @@ export default function Auth() {
 function AuthContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const [mode, setMode]   = useState<"login" | "register">("register");
-  const [step, setStep]   = useState(1);
+  const [mode, setMode] = useState<"login" | "register">("register");
+  const [step, setStep] = useState(1);
   const [error, setError] = useState<string | null>(null);
   const [resendNote, setResendNote] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
@@ -47,15 +47,11 @@ function AuthContent() {
     startTransition(async () => {
       const fd = new FormData();
       fd.append("full_name", reg.full_name);
-<<<<<<< HEAD
       fd.append("identifier", identifier);
-=======
-      fd.append("identifier", reg.identifier);
       fd.append("intent", "register");
->>>>>>> dfd42a427ac9fab450e70c17b75dbd8b1dc44822
-      fd.append("biz_name",  biz.name);
-      fd.append("biz_type",  biz.type);
-      fd.append("biz_loc",   biz.location);
+      fd.append("biz_name", biz.name);
+      fd.append("biz_type", biz.type);
+      fd.append("biz_loc", biz.location);
       const result = await sendOtp(fd);
       if ("error" in result && result.error) {
         setError(result.error);
@@ -64,11 +60,7 @@ function AuthContent() {
         router.refresh();
       } else {
         setResendNote(null);
-<<<<<<< HEAD
-        setOtpIdentifier(identifier);
-=======
-        setOtpIdentifier(("identifier" in result ? result.identifier : null) ?? reg.identifier);
->>>>>>> dfd42a427ac9fab450e70c17b75dbd8b1dc44822
+        setOtpIdentifier(("identifier" in result ? result.identifier : null) ?? identifier);
       }
     });
   }
@@ -76,15 +68,11 @@ function AuthContent() {
   async function handleLogin(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     setError(null);
-<<<<<<< HEAD
     const identifier = identifierFor(login);
-=======
-    const fd = new FormData(e.currentTarget);
-    fd.set("intent", "login");
->>>>>>> dfd42a427ac9fab450e70c17b75dbd8b1dc44822
     startTransition(async () => {
       const fd = new FormData();
       fd.set("identifier", identifier);
+      fd.set("intent", "login");
       const result = await sendOtp(fd);
       if ("error" in result && result.error) {
         setError(result.error);
@@ -93,11 +81,7 @@ function AuthContent() {
         router.refresh();
       } else {
         setResendNote(null);
-<<<<<<< HEAD
-        setOtpIdentifier(identifier);
-=======
-        setOtpIdentifier(("identifier" in result ? result.identifier : null) ?? fd.get("identifier") as string);
->>>>>>> dfd42a427ac9fab450e70c17b75dbd8b1dc44822
+        setOtpIdentifier(("identifier" in result ? result.identifier : null) ?? identifier);
       }
     });
   }
@@ -332,7 +316,6 @@ function AuthContent() {
           {/* ── Login ── */}
           {mode === "login" && !otpIdentifier && (
             <form onSubmit={handleLogin} className="space-y-4">
-<<<<<<< HEAD
               <AuthMethodSelect value={authMethod} onChange={setAuthMethod} />
               {authMethod === "email" ? (
                 <Field label="Email" type="email" placeholder="you@email.com"
@@ -345,14 +328,6 @@ function AuthContent() {
                   onMobileChange={v => setLogin(l => ({ ...l, mobile: v }))}
                 />
               )}
-=======
-              <div>
-                <label className="form-label">Email or mobile number</label>
-                <input name="identifier" type="text" required className="dv-input"
-                  autoComplete={mode === "login" ? "username" : "email"}
-                  placeholder="you@email.com or +255 7xx xxx xxx" />
-              </div>
->>>>>>> dfd42a427ac9fab450e70c17b75dbd8b1dc44822
               <button type="submit" disabled={pending} className="btn-gold w-full justify-center py-3">
                 {pending ? <Loader2 size={17} className="animate-spin" /> : "Sign in"}
               </button>
