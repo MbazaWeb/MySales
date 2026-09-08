@@ -17,4 +17,7 @@ export {
   createCheckoutSession,
   handleWebhook,
   getReportSales,
+  editProduct,
+  deleteProduct,
+  getStockLogs,
 } from "./actions";

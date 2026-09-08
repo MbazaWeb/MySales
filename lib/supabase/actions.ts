@@ -701,3 +701,57 @@ export async function handleWebhook(body: {
   revalidatePath("/profile");
   return { ok: true };
 }
+
+// ── Product edit / delete ─────────────────────────────────────────────────────
+
+export async function editProduct(formData: FormData) {
+  const supabase   = await createClient();
+  const productId  = formData.get("product_id")    as string;
+  const costPrice  = Number(formData.get("cost_price"));
+  const sellPrice  = Number(formData.get("selling_price"));
+
+  const { error } = await supabase
+    .from("products")
+    .update({
+      name:          formData.get("name")     as string,
+      category:      formData.get("category") as string,
+      unit:          formData.get("unit")      as string,
+      cost_price:    costPrice,
+      selling_price: sellPrice,
+      price:         sellPrice,
+      reorder:       Number(formData.get("reorder")),
+    } as any)
+    .eq("id", productId);
+
+  if (error) return { error: error.message };
+  revalidatePath("/inventory");
+  return { success: true };
+}
+
+export async function deleteProduct(formData: FormData) {
+  const supabase  = await createClient();
+  const productId = formData.get("product_id") as string;
+
+  // Soft-delete: set is_active = false
+  const { error } = await supabase
+    .from("products")
+    .update({ is_active: false } as any)
+    .eq("id", productId);
+
+  if (error) return { error: error.message };
+  revalidatePath("/inventory");
+  revalidatePath("/dashboard");
+  return { success: true };
+}
+
+export async function getStockLogs(branchId: string) {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("stock_logs")
+    .select("id, product_id, branch_id, movement_type, quantity_delta, balance_after, note, created_at")
+    .eq("branch_id", branchId)
+    .order("created_at", { ascending: false })
+    .limit(100);
+  if (error) throw new Error(error.message);
+  return data ?? [];
+}

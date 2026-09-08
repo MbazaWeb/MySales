@@ -1,7 +1,7 @@
 import { redirect }  from "next/navigation";
 import ReportsClient from "./client";
 import AppShell      from "../components/AppShell";
-import { getActiveBranch, getProducts, getReportSales } from "@/lib/supabase/actions";
+import { getActiveBranch, getProducts, getReportSales, getStockLogs } from "@/lib/supabase/actions";
 import { todayInBizTz } from "@/lib/supabase/tz";
 
 export const dynamic = "force-dynamic";
@@ -10,18 +10,18 @@ export default async function ReportsPage() {
   const ctx = await getActiveBranch();
   if (!ctx) redirect("/auth");
 
-  // Default: today in the business timezone (not the server's UTC clock)
   const today = todayInBizTz();
 
-  const [sales, products] = await Promise.all([
+  const [sales, products, stockLogs] = await Promise.all([
     getReportSales(ctx.branch.id, today, today),
     getProducts(ctx.branch.id),
+    getStockLogs(ctx.branch.id),
   ]);
 
   return (
     <AppShell
       title="Reports"
-      subtitle="Sales and stock summaries"
+      subtitle="Sales, stock and movement summaries"
       branchId={ctx.branch.id}
       bizName={ctx.biz.name}
       userName={ctx.user.user_metadata?.full_name ?? ctx.user.email}
@@ -29,6 +29,7 @@ export default async function ReportsPage() {
       <ReportsClient
         initialSales={sales}
         products={products}
+        stockLogs={stockLogs}
         branchId={ctx.branch.id}
         today={today}
       />

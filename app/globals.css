@@ -252,7 +252,12 @@ button { cursor: pointer; }
   padding-bottom: calc(var(--bottom-nav-h) + env(safe-area-inset-bottom));
 }
 @media (min-width: 1024px) {
-  .dv-main { margin-left: var(--sidebar-w); padding-bottom: 2rem; }
+  .dv-main {
+    margin-left: var(--sidebar-w);
+    padding-bottom: 2rem;
+  }
+  /* Desktop: no bottom nav, so remove its padding */
+  .dv-main { padding-bottom: 2rem; }
 }
 
 /* Header */
@@ -319,6 +324,9 @@ button { cursor: pointer; }
   -webkit-backdrop-filter: blur(16px) saturate(200%);
   border-top: 1px solid var(--border);
   box-shadow: 0 -4px 24px rgba(15,27,45,0.06);
+}
+@media (min-width: 1024px) {
+  .dv-bottom-nav { display: none !important; }
 }
 
 .dv-bottom-nav__item {
