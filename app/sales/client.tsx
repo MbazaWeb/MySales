@@ -1,7 +1,7 @@
 "use client";
 import { useMemo, useState, useTransition } from "react";
 import { Plus, Search, X, Loader2, AlertCircle, User, Phone } from "lucide-react";
-import { recordSale } from "@/lib/supabase/actions";
+import { recordSale } from "@/lib/supabase/client-actions";
 import type { Sale, Product } from "@/lib/supabase/types";
 
 function money(n: number) { return `TZS ${n.toLocaleString("en-TZ")}`; }

@@ -6,7 +6,7 @@ import {
   Shield, LogOut, Gem,
 } from "lucide-react";
 import { useTransition } from "react";
-import { signOut } from "@/lib/supabase/actions";
+import { signOut } from "@/lib/supabase/client-actions";
 
 const links = [
   { href: "/admin",         label: "Overview",   icon: LayoutDashboard, exact: true },

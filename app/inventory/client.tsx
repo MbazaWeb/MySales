@@ -1,7 +1,7 @@
 "use client";
 import { useMemo, useState, useTransition } from "react";
 import { Search, Plus, X, History, Package, Loader2, AlertCircle, ChevronDown } from "lucide-react";
-import { addStockEntry, createProduct } from "@/lib/supabase/actions";
+import { addStockEntry, createProduct } from "@/lib/supabase/client-actions";
 import { useStockLogs } from "@/lib/supabase/hooks";
 import type { Product } from "@/lib/supabase/types";
 

@@ -7,7 +7,7 @@ import {
   ChevronDown, LogOut, Gem, Bell,
 } from "lucide-react";
 import { useState, useTransition, useCallback, memo } from "react";
-import { signOut } from "@/lib/supabase/actions";
+import { signOut } from "@/lib/supabase/client-actions";
 
 const links = [
   { href: "/dashboard", label: "Dashboard",  icon: LayoutDashboard, shortLabel: "Home"  },

@@ -1,7 +1,7 @@
 "use client";
 import { useMemo, useState, useTransition } from "react";
 import { Search, ChevronDown, ChevronUp, X, Loader2, ShieldCheck, ShieldOff, Clock, Trash2, KeyRound } from "lucide-react";
-import { grantSubscription, revokeSubscription, extendTrial, deleteUser, resetUserPassword } from "@/lib/supabase/admin-actions";
+import { grantSubscription, revokeSubscription, extendTrial, deleteUser, resetUserPassword } from "@/lib/supabase/client-admin-actions";
 import type { AdminUser } from "@/lib/supabase/admin-guard";
 
 function money(n: number) { return `TZS ${n.toLocaleString("en-TZ")}`; }

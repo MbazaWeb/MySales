@@ -2,7 +2,7 @@
 import { Suspense, useState, useTransition } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { ArrowRight, Check, AlertCircle, Loader2 } from "lucide-react";
-import { sendOtp, verifyOtp } from "@/lib/supabase/actions";
+import { sendOtp, verifyOtp } from "@/lib/supabase/client-actions";
 
 type AuthMethod = "email" | "mobile";
 

@@ -5,7 +5,7 @@ import {
   MessageSquareText, Plus, ShieldCheck, UserPlus, X, Loader2,
   AlertCircle, Copy, CheckCheck, KeyRound, Shield,
 } from "lucide-react";
-import { addBranchWithStaff, signOut, createCheckoutSession } from "@/lib/supabase/actions";
+import { addBranchWithStaff, signOut, createCheckoutSession } from "@/lib/supabase/client-actions";
 import type { User } from "@supabase/supabase-js";
 
 type Business = { id: string; name: string; type: string };
