@@ -18,12 +18,12 @@ function load(file, dependencies = {}) {
 const validation = load("lib/product-import.ts");
 const { parseProductSheet, validateImportProducts, productTemplateData, PRODUCT_COLUMNS } = validation;
 const branchId = "11111111-1111-4111-8111-111111111111";
-const valid = { row: 2, name: "Water 500ml", category: "Water", stock: 24, unit: "bottles", cost_price: 500, selling_price: 1000, reorder: 5 };
+const valid = { row: 2, name: "Water 500ml", category: "Water", stock: 24, unit: "bottles", size: "", cost_price: 500, selling_price: 1000, reorder: 5 };
 
 test("a real downloaded XLSX template round-trips through the Excel reader", async () => {
   const workbook = await writeExcelFile([
     ...productTemplateData(),
-    ["Water 500ml", "Water", 24, "bottles", 500, 1000, 5],
+    ["Water 500ml", "Water", 24, "bottles", "", 500, 1000, 5],
   ]).toBuffer();
   assert.deepEqual(parseProductSheet(await readSheet(workbook)), { products: [valid], issues: [] });
 });
