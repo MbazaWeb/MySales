@@ -410,6 +410,8 @@ button { cursor: pointer; }
 .badge-ok   { background: var(--success-bg); color: var(--success); font-weight: 600; font-size: 0.7rem; padding: 0.2rem 0.55rem; border-radius: 999px; display: inline-block; }
 .badge-warn { background: var(--warning-bg); color: var(--warning); font-weight: 600; font-size: 0.7rem; padding: 0.2rem 0.55rem; border-radius: 999px; display: inline-block; }
 .badge-err  { background: var(--danger-bg);  color: var(--danger);  font-weight: 600; font-size: 0.7rem; padding: 0.2rem 0.55rem; border-radius: 999px; display: inline-block; }
+.badge-returned { background: #E6F4F1; color: #0F766E; font-weight: 600; font-size: 0.7rem; padding: 0.2rem 0.55rem; border-radius: 999px; display: inline-block; border: 1px solid #B3DFD6; }
+[data-theme="dark"] .badge-returned { background: rgba(20, 184, 166, 0.15); color: #5EEAD4; border-color: rgba(94, 234, 212, 0.3); }
 
 /* Modal */
 .modal-overlay {

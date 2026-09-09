@@ -260,6 +260,7 @@ export async function createProduct(formData: FormData) {
   const branchId    = formData.get("branch_id")    as string;
   const costPrice   = Number(formData.get("cost_price"));
   const sellingPrice = Number(formData.get("selling_price"));
+  const size        = String(formData.get("size") ?? "");
 
   const { data: product, error } = await supabase.from("products").insert({
     branch_id:     branchId,
@@ -267,6 +268,7 @@ export async function createProduct(formData: FormData) {
     category:      formData.get("category") as string,
     stock:         Number(formData.get("stock")),
     unit:          formData.get("unit")     as string,
+    size:          ["small", "mid", "large"].includes(size) ? size : "",
     cost_price:    costPrice,
     selling_price: sellingPrice,
     price:         sellingPrice,
@@ -324,7 +326,6 @@ export async function recordSale(formData: FormData) {
   const customerName  = (formData.get("customer_name")  as string) || null;
   const customerPhone = (formData.get("customer_phone") as string) || null;
   const status        = payment === "Credit" ? "Not paid" : "Paid";
-
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return { error: "Authentication required." };
   if (!Number.isInteger(qty) || qty <= 0) {
@@ -347,6 +348,41 @@ export async function recordSale(formData: FormData) {
   return { success: true };
 }
 
+// ── Sale lifecycle: mark paid / return ─────────────────────────────────────────
+
+/** Mark an unpaid (active) sale as paid. */
+export async function markSalePaid(formData: FormData) {
+  const supabase = await createClient();
+  const saleId   = formData.get("sale_id") as string;
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return { error: "Authentication required." };
+
+  const { error } = await supabase.rpc("mark_sale_paid", { p_sale_id: saleId } as any);
+  if (error) return { error: error.message };
+
+  revalidatePath("/sales");
+  revalidatePath("/dashboard");
+  revalidatePath("/reports");
+  return { success: true };
+}
+
+/** Return a sale — status becomes 'Returned' and the goods go back to inventory. */
+export async function returnSale(formData: FormData) {
+  const supabase = await createClient();
+  const saleId   = formData.get("sale_id") as string;
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return { error: "Authentication required." };
+
+  const { error } = await supabase.rpc("return_sale", { p_sale_id: saleId } as any);
+  if (error) return { error: error.message };
+
+  revalidatePath("/sales");
+  revalidatePath("/inventory");
+  revalidatePath("/dashboard");
+  revalidatePath("/reports");
+  return { success: true };
+}
+
 // ── Reports ───────────────────────────────────────────────────────────────────
 
 export async function getReportSales(branchId: string, from: string, to: string) {
@@ -356,7 +392,9 @@ export async function getReportSales(branchId: string, from: string, to: string)
   const { gte, lte } = bizDayRange(from, to);
   const { data, error } = await supabase
     .from("sales")
-    .select("id, product_name, qty, total, status, payment, created_at")
+    // profit & cost_price are required for the Faida (profit) figures —
+    // omitting them made every report show 0 profit.
+    .select("id, product_name, qty, unit_price, cost_price, profit, total, status, payment, created_at")
     .eq("branch_id", branchId)
     .gte("created_at", gte)
     .lte("created_at", lte)
@@ -709,6 +747,7 @@ export async function editProduct(formData: FormData) {
   const productId  = formData.get("product_id")    as string;
   const costPrice  = Number(formData.get("cost_price"));
   const sellPrice  = Number(formData.get("selling_price"));
+  const size       = String(formData.get("size") ?? "");
 
   const { error } = await supabase
     .from("products")
@@ -716,6 +755,7 @@ export async function editProduct(formData: FormData) {
       name:          formData.get("name")     as string,
       category:      formData.get("category") as string,
       unit:          formData.get("unit")      as string,
+      size:          ["small", "mid", "large"].includes(size) ? size : "",
       cost_price:    costPrice,
       selling_price: sellPrice,
       price:         sellPrice,

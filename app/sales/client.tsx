@@ -2,8 +2,8 @@
 import { T, useTranslation } from "@/app/components/LanguageProvider";
 
 import { useMemo, useState, useTransition } from "react";
-import { Plus, Search, X, Loader2, AlertCircle, User, Phone } from "lucide-react";
-import { recordSale } from "@/lib/supabase/client-actions";
+import { Plus, Search, X, Loader2, AlertCircle, User, Phone, CheckCircle2, RotateCcw, PackageCheck } from "lucide-react";
+import { recordSale, markSalePaid, returnSale } from "@/lib/supabase/client-actions";
 import type { Sale, Product } from "@/lib/supabase/types";
 
 function money(n: number) { return `TZS ${n.toLocaleString("en-TZ")}`; }
@@ -12,6 +12,16 @@ function fmt(iso: string, locale: string) {
 }
 
 const MOBILE_PAYMENTS = ["M-Pesa", "Airtel Money", "Mixx by Yas", "Bank Transfer", "Tigopesa"];
+
+/** Unpaid sales are shown as "Active". */
+function statusLabel(status: string) {
+  return status === "Not paid" ? "Active" : status;
+}
+function statusBadgeClass(status: string) {
+  if (status === "Not paid") return "badge-warn";
+  if (status === "Returned") return "badge-returned";
+  return "badge-ok";
+}
 
 export default function SalesClient({
   initialSales, products, branchId,
@@ -86,15 +96,39 @@ export default function SalesClient({
     });
   }
 
-  const totalRevenue = sales.reduce((a, s) => a + s.total, 0);
-  const totalProfit  = sales.reduce((a, s) => a + (s.profit ?? 0), 0);
+  const totalRevenue = sales.filter(s => s.status !== "Returned").reduce((a, s) => a + s.total, 0);
+  const totalProfit  = sales.filter(s => s.status !== "Returned").reduce((a, s) => a + (s.profit ?? 0), 0);
+  const activeCount  = sales.filter(s => s.status === "Not paid").length;
+  const returnedCount = sales.filter(s => s.status === "Returned").length;
+
+  function handleMarkPaid(sale: Sale) {
+    setError(null);
+    const fd = new FormData();
+    fd.append("sale_id", sale.id);
+    start(async () => {
+      const res = await markSalePaid(fd);
+      if ("error" in res && res.error) { setError(res.error); return; }
+      setSales(list => list.map(x => x.id === sale.id ? { ...x, status: "Paid" as const } : x));
+    });
+  }
+
+  function handleReturn(sale: Sale) {
+    setError(null);
+    const fd = new FormData();
+    fd.append("sale_id", sale.id);
+    start(async () => {
+      const res = await returnSale(fd);
+      if ("error" in res && res.error) { setError(res.error); return; }
+      setSales(list => list.map(x => x.id === sale.id ? { ...x, status: "Returned" as const } : x));
+    });
+  }
 
   return (
     <>
       {/* Header action */}
       <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
         {/* Summary pills */}
-        <div className="flex gap-3">
+        <div className="flex flex-wrap gap-3">
           <div className="rounded-lg px-4 py-2" style={{ background: "var(--surface)", border: "1px solid var(--border)" }}>
             <p className="text-xs" style={{ color: "var(--text-muted)" }}><T text={"Revenue"} /></p>
             <p className="font-bold text-sm">{money(totalRevenue)}</p>
@@ -103,6 +137,18 @@ export default function SalesClient({
             <p className="text-xs" style={{ color: "var(--success)" }}><T text={"Profit"} /></p>
             <p className="font-bold text-sm" style={{ color: "var(--success)" }}>{money(totalProfit)}</p>
           </div>
+          {activeCount > 0 && (
+            <div className="rounded-lg px-4 py-2" style={{ background: "var(--warning-bg)", border: "1px solid #FDE68A" }}>
+              <p className="text-xs" style={{ color: "var(--warning)" }}><T text={"Active"} /></p>
+              <p className="font-bold text-sm" style={{ color: "var(--warning)" }}>{activeCount}</p>
+            </div>
+          )}
+          {returnedCount > 0 && (
+            <div className="rounded-lg px-4 py-2" style={{ background: "var(--surface)", border: "1px solid var(--border)" }}>
+              <p className="text-xs" style={{ color: "var(--text-muted)" }}><T text={"Returned"} /></p>
+              <p className="font-bold text-sm">{returnedCount}</p>
+            </div>
+          )}
         </div>
         <button className="btn-gold" onClick={() => { setShow(true); setError(null); }}>
           <Plus size={16} /> <T text={"New sale"} /> </button>
@@ -126,7 +172,7 @@ export default function SalesClient({
           </div>
         ) : (
           <div className="overflow-x-auto">
-            <table className="dv-table" style={{ minWidth: "860px" }}>
+            <table className="dv-table" style={{ minWidth: "980px" }}>
               <thead>
                 <tr>
                   <th>#</th>
@@ -139,6 +185,7 @@ export default function SalesClient({
                   <th><T text={"Status"} /></th>
                   <th style={{ textAlign: "right" }}><T text={"Total"} /></th>
                   <th style={{ textAlign: "right" }}><T text={"Profit"} /></th>
+                  <th style={{ textAlign: "center" }}><T text={"Actions"} /></th>
                 </tr>
               </thead>
               <tbody>
@@ -165,16 +212,55 @@ export default function SalesClient({
                     </td>
                     <td style={{ color: "var(--text-muted)", fontSize: "0.8rem" }}>{fmt(s.created_at, locale)}</td>
                     <td>
-                      <span className={s.status === "Not paid" ? "badge-warn" : "badge-ok"}><T text={s.status} /></span>
+                      <div className="flex flex-col items-start gap-1">
+                        <span className={statusBadgeClass(s.status)}><T text={statusLabel(s.status)} /></span>
+                        {s.status === "Returned" && (
+                          <span className="badge-returned inline-flex items-center gap-1">
+                            <PackageCheck size={11} /> <T text={"Stock returned"} />
+                          </span>
+                        )}
+                      </div>
                     </td>
-                    <td style={{ textAlign: "right", fontWeight: 600 }}>{money(s.total)}</td>
+                    <td style={{ textAlign: "right", fontWeight: 600 }}>
+                      {s.status === "Returned" ? (
+                        <span style={{ color: "var(--text-muted)", textDecoration: "line-through" }}>{money(s.total)}</span>
+                      ) : money(s.total)}
+                    </td>
                     <td style={{ textAlign: "right" }}>
-                      {s.profit != null ? (
+                      {s.status === "Returned" ? (
+                        <span style={{ color: "var(--text-muted)" }}>—</span>
+                      ) : s.profit != null ? (
                         <span className="font-semibold text-sm"
                           style={{ color: s.profit >= 0 ? "var(--success)" : "var(--danger)" }}>
                           {s.profit >= 0 ? "+" : ""}{money(s.profit)}
                         </span>
                       ) : <span style={{ color: "var(--text-muted)" }}>—</span>}
+                    </td>
+                    <td style={{ textAlign: "center" }}>
+                      {s.status === "Returned" ? (
+                        <span style={{ color: "var(--border)" }}>—</span>
+                      ) : (
+                        <div style={{ display: "flex", gap: "0.25rem", justifyContent: "center" }}>
+                          {s.status === "Not paid" && (
+                            <button
+                              title={translateUi("Mark paid")}
+                              disabled={pending}
+                              className="inline-flex items-center gap-1 text-xs font-semibold px-2 py-1 rounded-lg disabled:opacity-50"
+                              style={{ background: "var(--success-bg)", color: "var(--success)" }}
+                              onClick={() => handleMarkPaid(s)}>
+                              <CheckCircle2 size={12} /> <T text={"Mark paid"} />
+                            </button>
+                          )}
+                          <button
+                            title={translateUi("Return — restock items")}
+                            disabled={pending}
+                            className="inline-flex items-center gap-1 text-xs font-semibold px-2 py-1 rounded-lg disabled:opacity-50"
+                            style={{ background: "#EFF6FF", color: "#1D4ED8" }}
+                            onClick={() => handleReturn(s)}>
+                            <RotateCcw size={12} /> <T text={"Return"} />
+                          </button>
+                        </div>
+                      )}
                     </td>
                   </tr>
                 ))}

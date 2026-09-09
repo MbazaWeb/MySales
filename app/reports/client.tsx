@@ -4,7 +4,7 @@ import { T, useTranslation } from "@/app/components/LanguageProvider";
 import { useState, useTransition } from "react";
 import {
   CalendarDays, CheckCircle2, Clock3, Download,
-  PackageCheck, Printer, TrendingUp, Loader2, History,
+  PackageCheck, FileSpreadsheet, FileText, TrendingUp, Loader2, History,
 } from "lucide-react";
 import { getReportSales, getStockLogs } from "@/lib/supabase/client-actions";
 import type { Database } from "@/lib/supabase/types";
@@ -15,6 +15,16 @@ type StockLog = Awaited<ReturnType<typeof getStockLogs>>[number];
 type Period   = "Daily"|"Weekly"|"Monthly"|"Custom";
 
 function money(n: number) { return `TZS ${n.toLocaleString("en-TZ")}`; }
+
+/** Unpaid sales are shown as "Active". */
+function statusLabel(status: string) {
+  return status === "Not paid" ? "Active" : status;
+}
+function statusBadgeClass(status: string) {
+  if (status === "Not paid") return "badge-warn";
+  if (status === "Returned") return "badge-returned";
+  return "badge-ok";
+}
 
 function rangeForPeriod(period: Period, today: string, from: string, to: string): [string,string] {
   const d = new Date(today);
@@ -43,6 +53,7 @@ export default function ReportsClient({
   const [sales, setSales]     = useState<Sale[]>(initialSales);
   const [logs, setLogs]       = useState<StockLog[]>(initialLogs);
   const [logFilter, setLogFilter] = useState("All");
+  const [exporting, setExporting] = useState<null|"excel"|"pdf">(null);
   const [pending, start]      = useTransition();
 
   function loadReport(p: Period, f: string, t: string) {
@@ -62,13 +73,14 @@ export default function ReportsClient({
     loadReport(p, from, to);
   }
 
-  const total    = sales.reduce((a,s)=>a+s.total,0);
-  const paid     = sales.filter(s=>s.status!=="Not paid").reduce((a,s)=>a+s.total,0);
-  const unpaid   = total-paid;
-  const profit   = sales.reduce((a,s)=>a+((s as any).profit??0),0);
-  const units    = products.reduce((a,p)=>a+p.stock,0);
-  const stockVal = products.reduce((a,p)=>a+p.stock*(p.selling_price??p.price),0);
-  const low      = products.filter(p=>p.stock<=p.reorder);
+  const total      = sales.filter(s=>s.status!=="Returned").reduce((a,s)=>a+s.total,0);
+  const collected  = sales.filter(s=>s.status==="Paid").reduce((a,s)=>a+s.total,0);
+  const returnedTotal = sales.filter(s=>s.status==="Returned").reduce((a,s)=>a+s.total,0);
+  const unpaid     = total-collected;
+  const profit     = sales.filter(s=>s.status!=="Returned").reduce((a,s)=>a+((s as any).profit??0),0);
+  const units      = products.reduce((a,p)=>a+p.stock,0);
+  const stockVal   = products.reduce((a,p)=>a+p.stock*(p.selling_price??p.price),0);
+  const low        = products.filter(p=>p.stock<=p.reorder);
 
   const periodLabel =
     period==="Daily"   ? new Date(today).toLocaleDateString(locale,{day:"numeric",month:"long",year:"numeric"})
@@ -77,12 +89,138 @@ export default function ReportsClient({
     : `${from} – ${to}`;
 
   const cards = [
-    {label:"Total revenue",  value:money(total),    sub:`${sales.length} transactions`, icon:TrendingUp,   accent:true},
-    {label:"Collected",      value:money(paid),     sub:"Received",                     icon:CheckCircle2, ok:true},
-    {label:"Outstanding",    value:money(unpaid),   sub:"Not yet paid",                 icon:Clock3,       warn:true},
-    {label:"Gross profit",   value:money(profit),   sub:"This period",                  icon:TrendingUp,   profit:true},
-    {label:"Stock value",    value:money(stockVal), sub:`${units} units on hand`,       icon:PackageCheck, plain:true},
+    {label:"Total revenue",  value:money(total),    sub:`${sales.length} transactions`, icon:TrendingUp,      accent:true},
+    {label:"Collected",      value:money(collected),sub:"Received",                    icon:CheckCircle2,    ok:true},
+    {label:"Outstanding",    value:money(unpaid),   sub:"Not yet paid",                 icon:Clock3,          warn:true},
+    {label:"Gross profit",   value:money(profit),   sub:"This period",                  icon:TrendingUp,      profit:true},
+    {label:"Stock value",    value:money(stockVal), sub:`${units} units on hand`,       icon:PackageCheck,    plain:true},
   ];
+
+  // ── Export helpers ────────────────────────────────────────────────────────
+  const fileStamp = `${period==="Custom" ? from : today}_to_${period==="Custom" ? to : today}`;
+
+  async function exportExcel() {
+    setExporting("excel");
+    try {
+      const stamp = rangeForPeriod(period, today, from, to);
+      const data = await data_ensure(stamp[0], stamp[1]);
+      const rows = buildExcelRows(data);
+      const { default: writeExcelFile } = await import("write-excel-file/browser");
+      await writeExcelFile(rows, { sheet: "Report", columns: Array.from({length:8},()=>({width:20})) }).toFile(`DukaVerse-report-${fileStamp}.xlsx`);
+    } finally {
+      setExporting(null);
+    }
+  }
+
+  async function exportPdf() {
+    setExporting("pdf");
+    try {
+      const stamp = rangeForPeriod(period, today, from, to);
+      const data = await data_ensure(stamp[0], stamp[1]);
+    const jspdfModule = await import("jspdf");
+    const jsPDF = jspdfModule.jsPDF;
+    const { default: autoTable } = await import("jspdf-autotable");
+    const doc = new jsPDF({ unit: "pt", format: "a4" });
+    const pageW = doc.internal.pageSize.getWidth();
+
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(18);
+    doc.setTextColor(15, 27, 45);
+    doc.text("DukaVerse - Sales Report", 40, 48);
+
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(10);
+    doc.setTextColor(110, 120, 135);
+    doc.text(`Period: ${periodLabel}`, 40, 68);
+    doc.text(`Generated: ${new Date().toLocaleString(locale)}`, 40, 82);
+
+    autoTable(doc, {
+      startY: 100,
+      head: [["Total revenue", "Collected", "Outstanding", "Gross profit", "Transactions"]],
+      body: [[money(total), money(collected), money(unpaid), money(profit), String(sales.length)]],
+      theme: "grid",
+      styles: { fontSize: 9, cellPadding: 6 },
+      headStyles: { fillColor: [15, 27, 45], textColor: 255, fontStyle: "bold" },
+      columnStyles: { 4: { halign: "right" } },
+      margin: { left: 40, right: 40 },
+    });
+
+    autoTable(doc, {
+      startY: (doc as any).lastAutoTable.finalY + 24,
+      head: [["Product", "Date", "Status", "Payment", "Qty", "Unit price", "Total", "Profit"]],
+      body: data.map(s => [
+        s.product_name,
+        new Date(s.created_at).toLocaleDateString(locale),
+        statusLabel(s.status),
+        s.payment,
+        String(s.qty),
+        money(s.unit_price ?? 0),
+        money(s.total),
+        s.status === "Returned" ? "-" : money(s.profit ?? 0),
+      ]),
+      theme: "striped",
+      styles: { fontSize: 8, cellPadding: 4 },
+      headStyles: { fillColor: [15, 27, 45], textColor: 255, fontStyle: "bold" },
+      columnStyles: { 4: { halign: "right" }, 5: { halign: "right" }, 6: { halign: "right" }, 7: { halign: "right" } },
+      margin: { left: 40, right: 40 },
+      didDrawPage: () => {},
+    });
+
+    const pageCount = doc.getNumberOfPages();
+    for (let i = 1; i <= pageCount; i++) {
+      doc.setPage(i);
+      doc.setFontSize(8);
+      doc.setTextColor(150, 155, 165);
+      doc.text(`DukaVerse - page ${i} of ${pageCount}`, pageW - 160, doc.internal.pageSize.getHeight() - 20);
+    }
+
+    doc.save(`DukaVerse-report-${fileStamp}.pdf`);
+    } finally {
+      setExporting(null);
+    }
+  }
+
+  // Fetch fresh data for the selected window so exports always match the UI.
+  async function data_ensure(f: string, t: string): Promise<Sale[]> {
+    try {
+      return await getReportSales(branchId, f, t);
+    } catch {
+      return sales; // fall back to what is on screen
+    }
+  }
+
+  function buildExcelRows(data: Sale[]) {
+    const cell = (value: string | number, opts: Record<string, unknown> = {}) => ({ value, ...opts });
+    const rows: Record<string, unknown>[][] = [
+      [cell("DukaVerse - Sales Report", { fontWeight: "bold", fontSize: 16, color: "#0F1B2D" })],
+      [cell(`Period: ${periodLabel}`)],
+      [cell(`Generated: ${new Date().toLocaleString(locale)}`)],
+      [cell("")],
+      [cell("Summary", { fontWeight: "bold", backgroundColor: "#0F1B2D", color: "#FFFFFF" }), cell("")],
+      [cell("Total revenue"), cell(money(total))],
+      [cell("Collected"), cell(money(collected))],
+      [cell("Outstanding"), cell(money(unpaid))],
+      [cell("Gross profit"), cell(money(profit))],
+      [cell("Returned"), cell(money(returnedTotal))],
+      [cell("Transactions"), cell(data.length)],
+      [cell("")],
+      ["Product", "Date", "Status", "Payment", "Qty", "Unit price", "Total", "Profit"].map(h =>
+        cell(h, { fontWeight: "bold", backgroundColor: "#0F1B2D", color: "#FFFFFF" })),
+    ];
+    for (const s of data) {
+      rows.push([
+        cell(s.product_name),
+        cell(new Date(s.created_at).toLocaleDateString(locale)),
+        cell(statusLabel(s.status)),
+        cell(s.payment),
+        cell(s.qty),
+        cell(s.unit_price ?? 0),
+        cell(s.total),
+        cell(s.status === "Returned" ? "-" : (s.profit ?? 0)),
+      ]);
+    }
+    return rows;
+  }
 
   // Filter stock logs
   const filteredLogs = logFilter==="All"
@@ -158,8 +296,16 @@ export default function ReportsClient({
               <p className="text-xs mt-0.5" style={{color:"var(--text-muted)"}}><T text={"Paid and outstanding —"} /> <T text={periodLabel} /></p>
             </div>
             <div className="flex gap-2">
-              <button className="btn-ghost px-2.5 py-2" onClick={()=>window.print()}><Printer size={16}/></button>
-              <button className="btn-ghost px-2.5 py-2" onClick={()=>window.print()}><Download size={16}/></button>
+              <button className="btn-ghost px-3 py-2 inline-flex items-center gap-1.5 text-sm"
+                onClick={exportExcel} disabled={exporting !== null}>
+                {exporting==="excel" ? <Loader2 size={14} className="animate-spin"/> : <FileSpreadsheet size={15}/>}
+                <T text={"Excel"} />
+              </button>
+              <button className="btn-ghost px-3 py-2 inline-flex items-center gap-1.5 text-sm"
+                onClick={exportPdf} disabled={exporting !== null}>
+                {exporting==="pdf" ? <Loader2 size={14} className="animate-spin"/> : <FileText size={15}/>}
+                <T text={"PDF"} />
+              </button>
             </div>
           </div>
           {sales.length===0?(
@@ -178,12 +324,20 @@ export default function ReportsClient({
                       <span className="font-semibold block">{s.product_name}</span>
                       <span className="text-xs" style={{color:"var(--text-muted)"}}>{s.qty} <T text={"units ·"} /> {new Date(s.created_at).toLocaleDateString(locale)}</span>
                     </td>
-                    <td><span className={s.status==="Not paid"?"badge-warn":"badge-ok"}><T text={s.status} /></span></td>
-                    <td style={{textAlign:"right",fontWeight:600}}>{money(s.total)}</td>
+                    <td><span className={statusBadgeClass(s.status)}><T text={statusLabel(s.status)} /></span></td>
+                    <td style={{textAlign:"right",fontWeight:600}}>
+                      {s.status==="Returned"
+                        ? <span style={{color:"var(--text-muted)",textDecoration:"line-through"}}>{money(s.total)}</span>
+                        : money(s.total)}
+                    </td>
                     <td style={{textAlign:"right"}}>
-                      <span style={{color:"var(--success)",fontWeight:600}}>
-                        +{money((s as any).profit??0)}
-                      </span>
+                      {s.status==="Returned" ? (
+                        <span className="badge-returned"><T text={"Stock returned"} /></span>
+                      ):(
+                        <span style={{color:"var(--success)",fontWeight:600}}>
+                          +{money(s.profit ?? 0)}
+                        </span>
+                      )}
                     </td>
                   </tr>
                 ))}

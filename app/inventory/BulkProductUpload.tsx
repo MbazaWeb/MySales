@@ -79,6 +79,7 @@ export default function BulkProductUpload({ branchId, products, onClose, onImpor
           <li>{t("Download the template and fill one product per row, starting on row 2.", "Pakua kiolezo na ujaze bidhaa moja kwa kila mstari, kuanzia mstari wa 2.")}</li>
           <li>{t("Keep the headers on row 1. Only the first worksheet is imported. Maximum 500 products and 5 MB.", "Acha vichwa kwenye mstari wa 1. Karatasi ya kwanza pekee itapakiwa. Kiwango cha juu ni bidhaa 500 na MB 5.")}</li>
           <li>{t("Use whole TZS prices and whole quantities. Blank stock defaults to 0, unit to units, category to Other, and reorder level to 10.", "Tumia bei za TZS na idadi zisizo na desimali. Nafasi tupu zitatumia idadi 0, kipimo units, aina Other na kiwango cha kuagiza 10.")}</li>
+          <li>{t("Kipimo (Size) is optional: use small, mid or large, or leave the cell blank.", "Kipimo (Saizi) ni si lazima: tumia small, mid au large, au acha wazi.")}</li>
         </ol>
         <p className="text-xs mb-4" style={{ color: "var(--text-muted)" }}>{t("Required: product name, cost price and selling price. Names: up to 160 characters; category: 80; unit: 30. Stock and reorder: up to 2,147,483,647.", "Lazima: jina la bidhaa, bei ya kununua na bei ya kuuza. Jina: herufi 160; aina: 80; kipimo: 30. Idadi na kiwango cha kuagiza: hadi 2,147,483,647.")}</p>
         <div className="flex flex-wrap items-end gap-4 mb-5">
@@ -106,6 +107,7 @@ export default function BulkProductUpload({ branchId, products, onClose, onImpor
               <thead><tr><th>{t("Row", "Mstari")}</th>{PRODUCT_COLUMNS.map(column => <th key={column}>{t(column)}</th>)}</tr></thead>
               <tbody>{preview.products.map(product => <tr key={product.row} style={preview.issues.some(issue => issue.row === product.row) ? { background: "var(--danger-bg)" } : undefined}>
                 <td>{product.row}</td><td>{product.name}</td><td>{product.category}</td><td>{product.stock.toLocaleString(locale)}</td><td>{product.unit}</td>
+                <td>{product.size ? t(product.size.charAt(0).toUpperCase() + product.size.slice(1)) : "—"}</td>
                 <td>{product.cost_price.toLocaleString(locale)}</td><td>{product.selling_price.toLocaleString(locale)}</td><td>{product.reorder.toLocaleString(locale)}</td>
               </tr>)}</tbody>
             </table>

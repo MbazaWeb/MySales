@@ -114,6 +114,15 @@ const swahili: Record<string, string> = {
   "Customer name is required for mobile payments.": "Jina la mteja linahitajika kwa malipo ya simu.",
   "Please enter a category.": "Tafadhali weka aina ya bidhaa.", "Cost price must be > 0.": "Bei ya kununua lazima izidi 0.",
   "Selling price must be > 0.": "Bei ya kuuza lazima izidi 0.", "Selling price should be ≥ cost price.": "Bei ya kuuza isipungue bei ya kununua.",
+  // Sale lifecycle (active / paid / returned)
+  "Mark paid": "Weka imelipwa", "Return": "Rejesha", "Returned": "Imerejeshwa",
+  "Stock returned": "Bidhaa zimerudishwa", "Return — restock items": "Rejesha — rudisha bidhaa kwenye hesabu",
+  "Excel": "Excel", "PDF": "PDF",
+  // Product size (kipimo)
+  "Kipimo (Size)": "Kipimo (Saizi)", "Size": "Saizi",
+  "Small": "Ndogo", "Mid": "Kati", "Large": "Kubwa",
+  "Small, Mid or Large (optional)": "Ndogo, Kati au Kubwa (si lazima)",
+  "Use small, mid or large — or leave the cell blank.": "Tumia small, mid au large — au acha wazi.",
 };
 
 export function translate(text: string, language: Language): string {

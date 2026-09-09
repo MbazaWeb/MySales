@@ -13,12 +13,14 @@ const CATEGORIES = [
   "Dairy","Bread & Bakery","Meat & Fish","Household","Personal Care","Other",
 ];
 const UNITS = ["bottles","cans","packs","cartons","kg","litres","units","pieces","sachets"];
+const SIZES = ["small","mid","large"];
+const sizeLabel = (s: string) => s ? s.charAt(0).toUpperCase() + s.slice(1) : "";
 
 function money(n: number) { return `TZS ${n.toLocaleString("en-TZ")}`; }
 
 const EMPTY_NP = {
   name:"", category:"Beer", customCategory:"",
-  stock:"" as string|number, unit:"bottles",
+  stock:"" as string|number, unit:"bottles", size:"",
   cost_price:"" as string|number,
   selling_price:"" as string|number,
   reorder:"10" as string|number,
@@ -52,7 +54,7 @@ export default function InventoryClient({
 
   // Edit product state
   const [editTarget, setEditTarget] = useState<Product|null>(null);
-  const [ep, setEp] = useState({ name:"", category:"", unit:"bottles", cost_price:"" as string|number, selling_price:"" as string|number, reorder:"" as string|number });
+  const [ep, setEp] = useState({ name:"", category:"", unit:"bottles", size:"", cost_price:"" as string|number, selling_price:"" as string|number, reorder:"" as string|number });
 
   // Delete state
   const [deleteTarget, setDeleteTarget] = useState<Product|null>(null);
@@ -69,6 +71,7 @@ export default function InventoryClient({
       name:          p.name,
       category:      p.category || "Beer",
       unit:          p.unit,
+      size:          p.size ?? "",
       cost_price:    p.cost_price ?? 0,
       selling_price: p.selling_price ?? p.price,
       reorder:       p.reorder,
@@ -107,6 +110,7 @@ export default function InventoryClient({
     fd.append("category",      cat);
     fd.append("stock",         String(np.stock || 0));
     fd.append("unit",          np.unit);
+    fd.append("size",          np.size);
     fd.append("cost_price",    String(cost));
     fd.append("selling_price", String(sell));
     fd.append("reorder",       String(np.reorder || 10));
@@ -131,6 +135,7 @@ export default function InventoryClient({
     fd.append("name",          ep.name);
     fd.append("category",      ep.category);
     fd.append("unit",          ep.unit);
+    fd.append("size",          ep.size);
     fd.append("cost_price",    String(cost));
     fd.append("selling_price", String(sell));
     fd.append("reorder",       String(ep.reorder));
@@ -139,7 +144,7 @@ export default function InventoryClient({
       if ("error" in res && res.error) { setError(res.error); return; }
       setProducts(ps => ps.map(p => p.id===editTarget.id
         ? {...p, name:ep.name, category:ep.category, unit:ep.unit,
-            cost_price:cost, selling_price:sell, price:sell, reorder:Number(ep.reorder)}
+            size:ep.size, cost_price:cost, selling_price:sell, price:sell, reorder:Number(ep.reorder)}
         : p));
       setModal(null); setEditTarget(null);
     });
@@ -244,13 +249,14 @@ export default function InventoryClient({
       ) : (
         <div className="dv-card overflow-hidden p-0">
           <div className="overflow-x-auto">
-            <table className="dv-table" style={{minWidth:960}}>
+            <table className="dv-table" style={{minWidth:1040}}>
               <thead>
                 <tr>
                   <th style={{minWidth:160}}><T text={"Product"} /></th>
                   <th><T text={"Category"} /></th>
                   <th style={{textAlign:"right"}}><T text={"Stock"} /></th>
                   <th><T text={"Unit"} /></th>
+                  <th><T text={"Kipimo (Size)"} /></th>
                   <th style={{textAlign:"right"}}><T text={"Cost"} /></th>
                   <th style={{textAlign:"right"}}><T text={"Selling"} /></th>
                   <th style={{textAlign:"right"}}><T text={"Profit/unit"} /></th>
@@ -272,6 +278,7 @@ export default function InventoryClient({
                       <td style={{color:"var(--text-secondary)"}}>{p.category||"—"}</td>
                       <td style={{textAlign:"right",fontWeight:700,color:low?"var(--warning)":"var(--text-primary)"}}>{p.stock}</td>
                       <td style={{color:"var(--text-muted)"}}><T text={p.unit} /></td>
+                      <td style={{color:"var(--text-secondary)"}}>{p.size ? <T text={sizeLabel(p.size)} /> : <span style={{color:"var(--border)"}}>—</span>}</td>
                       <td style={{textAlign:"right"}}>{money(p.cost_price??0)}</td>
                       <td style={{textAlign:"right",fontWeight:600}}>{money(p.selling_price??p.price)}</td>
                       <td style={{textAlign:"right"}}>
@@ -317,7 +324,7 @@ export default function InventoryClient({
                   );
                 })}
                 {rows.length===0&&(
-                  <tr><td colSpan={12} style={{textAlign:"center",padding:"3rem",color:"var(--text-muted)"}}> <T text={"No products match your search."} /> </td></tr>
+                  <tr><td colSpan={13} style={{textAlign:"center",padding:"3rem",color:"var(--text-muted)"}}> <T text={"No products match your search."} /> </td></tr>
                 )}
               </tbody>
               {rows.length>0&&(
@@ -328,7 +335,7 @@ export default function InventoryClient({
                     <td style={{textAlign:"right",fontWeight:700,padding:"0.75rem 1rem"}}>
                       {rows.reduce((a,p)=>a+p.stock,0)}
                     </td>
-                    <td colSpan={5}/>
+                    <td colSpan={6}/>
                     <td style={{textAlign:"right",fontWeight:700,padding:"0.75rem 1rem",color:"var(--navy-700)"}}>
                       {money(rows.reduce((a,p)=>a+p.stock*(p.cost_price??0),0))}
                     </td>
@@ -409,9 +416,25 @@ export default function InventoryClient({
                   </select>
                 </div>
                 <div>
+                  <label className="form-label"><T text={"Kipimo (Size)"} /></label>
+                  <select className="dv-select" value={np.size} onChange={e=>setNp(n=>({...n,size:e.target.value}))}>
+                    <option value="">—</option>
+                    {SIZES.map(s=><option key={s} value={s}><T text={sizeLabel(s)} /></option>)}
+                  </select>
+                  <p className="text-xs mt-1" style={{color:"var(--text-muted)"}}><T text={"Small, Mid or Large (optional)"} /></p>
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
                   <label className="form-label"><T text={"Opening stock"} /></label>
                   <input required type="number" min="0" className="dv-input" placeholder={translateUi("e.g. 24")}
                     value={np.stock} onChange={e=>setNp(n=>({...n,stock:e.target.value}))}/>
+                </div>
+                <div>
+                  <label className="form-label"><T text={"Reorder level"} /></label>
+                  <input required type="number" min="0" className="dv-input"
+                    placeholder={translateUi("Alert when stock falls below this")}
+                    value={np.reorder} onChange={e=>setNp(n=>({...n,reorder:e.target.value}))}/>
                 </div>
               </div>
               <div className="grid grid-cols-2 gap-3">
@@ -509,6 +532,15 @@ export default function InventoryClient({
                   </span>
                 </div>
               )}
+              <div>
+                <label className="form-label"><T text={"Kipimo (Size)"} /></label>
+                <select className="dv-select" value={ep.size}
+                  onChange={e=>setEp(v=>({...v,size:e.target.value}))}>
+                  <option value="">—</option>
+                  {SIZES.map(s=><option key={s} value={s}><T text={sizeLabel(s)} /></option>)}
+                </select>
+                <p className="text-xs mt-1" style={{color:"var(--text-muted)"}}><T text={"Small, Mid or Large (optional)"} /></p>
+              </div>
               <div>
                 <label className="form-label"><T text={"Reorder level"} /></label>
                 <input required type="number" min="0" className="dv-input"

@@ -24,6 +24,7 @@ export interface Database {
           category:     string;
           stock:        number;
           unit:         string;
+          size:         string;   // "kipimo" size spec: '' | small | mid | large
           cost_price:   number;    // buying / retail price (TZS)
           selling_price: number;   // price charged to customer (TZS)
           price:        number;    // alias = selling_price for backward compat
@@ -34,7 +35,7 @@ export interface Database {
         };
         Insert: {
           id?: string; branch_id: string; name: string; sku?: string | null;
-          category?: string; stock?: number; unit?: string;
+          category?: string; stock?: number; unit?: string; size?: string;
           cost_price: number; selling_price: number; price?: number;
           reorder?: number; is_active?: boolean;
         };
@@ -53,7 +54,7 @@ export interface Database {
           total:          number;
           profit:         number;   // (unit_price - cost_price) * qty
           payment:        string;
-          status:         "Paid" | "Not paid";
+          status:         "Paid" | "Not paid" | "Returned";
           customer_name:  string | null;
           customer_phone: string | null;
           sold_by:        string | null;
@@ -98,6 +99,8 @@ export interface Database {
     Functions: {
       record_sale: { Args: { p_product_id: string; p_qty: number; p_payment: string; p_status: string; p_customer_name?: string | null; p_customer_phone?: string | null; }; Returns: string; };
       add_stock: { Args: { p_product_id: string; p_quantity: number; p_note?: string | null }; Returns: number; };
+      mark_sale_paid: { Args: { p_sale_id: string }; Returns: undefined; };
+      return_sale: { Args: { p_sale_id: string }; Returns: undefined; };
     };
     Enums: {};
   };

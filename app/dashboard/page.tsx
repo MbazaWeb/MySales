@@ -273,8 +273,8 @@ export default async function Dashboard() {
                   </div>
                   <div className="text-right shrink-0">
                     <b className="block text-sm font-semibold">{money(s.total)}</b>
-                    <span className={s.status === "Not paid" ? "badge-warn" : "badge-ok"}>
-                      <T text={s.status} />
+                    <span className={s.status === "Not paid" ? "badge-warn" : s.status === "Returned" ? "badge-returned" : "badge-ok"}>
+                      <T text={s.status === "Not paid" ? "Active" : s.status} />
                     </span>
                   </div>
                 </div>

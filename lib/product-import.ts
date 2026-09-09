@@ -1,16 +1,18 @@
 export const MAX_IMPORT_ROWS = 500;
 export const MAX_IMPORT_BYTES = 5 * 1024 * 1024;
-export const PRODUCT_COLUMNS = ["Product name", "Category", "Opening stock", "Unit", "Cost price (TZS)", "Selling price (TZS)", "Reorder level"] as const;
-export type ImportProduct = { row: number; name: string; category: string; stock: number; unit: string; cost_price: number; selling_price: number; reorder: number };
+export const PRODUCT_COLUMNS = ["Product name", "Category", "Opening stock", "Unit", "Kipimo (Size)", "Cost price (TZS)", "Selling price (TZS)", "Reorder level"] as const;
+export const SIZE_OPTIONS = ["small", "mid", "large"] as const;
+export type ImportProduct = { row: number; name: string; category: string; stock: number; unit: string; size: string; cost_price: number; selling_price: number; reorder: number };
 export type ImportIssue = { row: number; column: string; message: string };
 export type ImportResult = { products: ImportProduct[]; issues: ImportIssue[] };
 
-const fields = ["name", "category", "stock", "unit", "cost_price", "selling_price", "reorder"] as const;
+const fields = ["name", "category", "stock", "unit", "size", "cost_price", "selling_price", "reorder"] as const;
 const aliases: Record<string, typeof fields[number]> = {
   "product name": "name", name: "name", product: "name", "jina la bidhaa": "name",
   category: "category", aina: "category", "aina ya bidhaa": "category",
   "opening stock": "stock", stock: "stock", quantity: "stock", "idadi ya kuanzia": "stock",
   unit: "unit", kipimo: "unit",
+  "kipimo (size)": "size", "size": "size", "saizi": "size", "ukubwa": "size",
   "cost price (tzs)": "cost_price", "cost price": "cost_price", "cost_price": "cost_price", "buying price": "cost_price", "bei ya kununua (tzs)": "cost_price",
   "selling price (tzs)": "selling_price", "selling price": "selling_price", "selling_price": "selling_price", price: "selling_price", "bei ya kuuza (tzs)": "selling_price",
   "reorder level": "reorder", reorder: "reorder", "kiwango cha kuagiza": "reorder",
@@ -53,9 +55,22 @@ export function validateImportProducts(input: unknown, existingNames: string[] =
       }
       return candidate;
     };
+    const sizeText = (() => {
+      const candidate = raw["size"];
+      if (empty(candidate) || (typeof candidate === "string" && !candidate.trim())) return "";
+      const normalized = String(candidate).trim().toLowerCase();
+      if ((SIZE_OPTIONS as readonly string[]).includes(normalized)) return normalized;
+      // Friendly aliases people type in the wild.
+      if (normalized === "medium" || normalized === "katikati") return "mid";
+      if (normalized === "s" || normalized === "sm") return "small";
+      if (normalized === "l" || normalized === "lg" || normalized === "kubwa") return "large";
+      addIssue("Kipimo (Size)", "Use small, mid or large — or leave the cell blank.");
+      return "";
+    })();
     const product: ImportProduct = {
       row, name: text("name", "Product name", 160), category: text("category", "Category", 80, "Other"),
-      unit: text("unit", "Unit", 30, "units"), stock: number("stock", "Opening stock", 0, 2147483647, 0),
+      unit: text("unit", "Unit", 30, "units"), size: sizeText,
+      stock: number("stock", "Opening stock", 0, 2147483647, 0),
       cost_price: number("cost_price", "Cost price (TZS)", 1, 1e12), selling_price: number("selling_price", "Selling price (TZS)", 1, 1e12),
       reorder: number("reorder", "Reorder level", 0, 2147483647, 10),
     };

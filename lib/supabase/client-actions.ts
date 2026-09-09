@@ -15,6 +15,8 @@ export {
   addStockEntry,
   getSales,
   recordSale,
+  markSalePaid,
+  returnSale,
   getReportSales,
   getStockLogs,
   getBusinessData,
