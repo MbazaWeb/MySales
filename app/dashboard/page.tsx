@@ -1,5 +1,3 @@
-
-import { T, LocalizedDate } from "@/app/components/LanguageProvider";
 import { redirect } from "next/navigation";
 import Link from "next/link";
 import { 
@@ -76,7 +74,16 @@ export default async function Dashboard() {
     .slice(0, 5);
   const maxCategoryStock = Math.max(...categoryData.map(c => c[1]), 1);
 
-  const currentTime = new Date().toISOString();
+  const currentTime = new Date().toLocaleString("en-TZ", {
+    timeZone: BIZ_TZ,
+    weekday: "short",
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit"
+  });
 
   const cards = [
     { label: "Today's revenue", value: money(todayRev), sub: `${todaySales.length} transactions today`, icon: WalletCards, accent: true, warn: false },
@@ -85,7 +92,8 @@ export default async function Dashboard() {
     { label: "Low stock", value: String(lowStock.length), sub: "Need reordering", icon: TriangleAlert, accent: false, warn: lowStock.length > 0 },
   ];
 
-  const subtitle = ctx.branch.name;
+  const now = new Date();
+  const subtitle = `${ctx.branch.name} · ${now.toLocaleDateString("en-TZ", { timeZone: BIZ_TZ, weekday: "long", day: "numeric", month: "long", year: "numeric" })}`;
 
   return (
     <AppShell 
@@ -103,12 +111,15 @@ export default async function Dashboard() {
           style={{ background: "var(--warning-bg)", border: "1px solid #FDE68A" }}>
           <div>
             <p className="text-sm font-semibold" style={{ color: "var(--warning)" }}>
-              {lowStock.length} {lowStock.length === 1 ? <T text={"item needs"} /> : <T text={"items need"} />} <T text={"restocking"} /> </p>
+              {lowStock.length} {lowStock.length === 1 ? "item needs" : "items need"} restocking
+            </p>
             <p className="text-xs mt-0.5" style={{ color: "#92400E" }}>
               {lowStock.map(p => p.name).join(", ")}
             </p>
           </div>
-          <Link href="/inventory" className="text-sm font-semibold whitespace-nowrap" style={{ color: "var(--warning)" }}> <T text={"Review →"} /> </Link>
+          <Link href="/inventory" className="text-sm font-semibold whitespace-nowrap" style={{ color: "var(--warning)" }}>
+            Review →
+          </Link>
         </div>
       )}
 
@@ -128,7 +139,7 @@ export default async function Dashboard() {
               <div className="flex items-start justify-between">
                 <span className="text-xs font-medium"
                   style={{ color: c.accent ? "rgba(255,255,255,0.6)" : "var(--text-muted)" }}>
-                  <T text={c.label} />
+                  {c.label}
                 </span>
                 <I size={17} style={{ color: c.accent ? "var(--gold-500)" : c.warn ? "var(--warning)" : "var(--text-muted)" }} />
               </div>
@@ -138,7 +149,7 @@ export default async function Dashboard() {
               </strong>
               <span className="mt-1 block text-xs"
                 style={{ color: c.accent ? "rgba(255,255,255,0.5)" : "var(--text-muted)" }}>
-                <T text={c.sub} />
+                {c.sub}
               </span>
             </article>
           );
@@ -152,8 +163,10 @@ export default async function Dashboard() {
         <section className="dv-card">
           <div className="flex items-center justify-between mb-4">
             <div>
-              <h2 className="font-semibold"><T text={"Sales Trend"} /></h2>
-              <p className="text-xs mt-0.5" style={{ color: "var(--text-muted)" }}> <T text={"Last 7 days revenue"} /> </p>
+              <h2 className="font-semibold">Sales Trend</h2>
+              <p className="text-xs mt-0.5" style={{ color: "var(--text-muted)" }}>
+                Last 7 days revenue
+              </p>
             </div>
             <LineChart size={18} style={{ color: "var(--gold-500)" }} />
           </div>
@@ -175,7 +188,7 @@ export default async function Dashboard() {
                       }}
                     />
                     <span className="text-[10px]" style={{ color: "var(--text-muted)" }}>
-                      {<LocalizedDate value={day.date} options={{ weekday: "short" }} />}
+                      {new Date(day.date).toLocaleDateString("en-TZ", { weekday: "short" })}
                     </span>
                   </div>
                 );
@@ -185,15 +198,15 @@ export default async function Dashboard() {
             {/* Summary stats */}
             <div className="grid grid-cols-3 gap-2 pt-2 border-t" style={{ borderColor: "var(--border)" }}>
               <div>
-                <p className="text-[10px]" style={{ color: "var(--text-muted)" }}><T text={"Total"} /></p>
+                <p className="text-[10px]" style={{ color: "var(--text-muted)" }}>Total</p>
                 <p className="text-sm font-semibold">{money(dailySales.reduce((a, d) => a + d.revenue, 0))}</p>
               </div>
               <div>
-                <p className="text-[10px]" style={{ color: "var(--text-muted)" }}><T text={"Avg Daily"} /></p>
+                <p className="text-[10px]" style={{ color: "var(--text-muted)" }}>Avg Daily</p>
                 <p className="text-sm font-semibold">{money(dailySales.reduce((a, d) => a + d.revenue, 0) / 7)}</p>
               </div>
               <div>
-                <p className="text-[10px]" style={{ color: "var(--text-muted)" }}><T text={"Transactions"} /></p>
+                <p className="text-[10px]" style={{ color: "var(--text-muted)" }}>Transactions</p>
                 <p className="text-sm font-semibold">{dailySales.reduce((a, d) => a + d.transactions, 0)}</p>
               </div>
             </div>
@@ -204,15 +217,18 @@ export default async function Dashboard() {
         <section className="dv-card">
           <div className="flex items-center justify-between mb-4">
             <div>
-              <h2 className="font-semibold"><T text={"Stock by Category"} /></h2>
+              <h2 className="font-semibold">Stock by Category</h2>
               <p className="text-xs mt-0.5" style={{ color: "var(--text-muted)" }}>
-                {products.length} <T text={"total products"} /> </p>
+                {products.length} total products
+              </p>
             </div>
             <BarChart3 size={18} style={{ color: "var(--gold-500)" }} />
           </div>
 
           {categoryData.length === 0 ? (
-            <p className="text-sm text-center py-6" style={{ color: "var(--text-muted)" }}> <T text={"No products categorized yet"} /> </p>
+            <p className="text-sm text-center py-6" style={{ color: "var(--text-muted)" }}>
+              No products categorized yet
+            </p>
           ) : (
             <div className="space-y-3">
               {categoryData.map(([category, stock]) => {
@@ -221,8 +237,8 @@ export default async function Dashboard() {
                 return (
                   <div key={category}>
                     <div className="flex justify-between text-sm mb-1">
-                      <span className="font-medium truncate"><T text={category} /></span>
-                      <span className="shrink-0 ml-2" style={{ color: "var(--text-muted)" }}>{stock} <T text={"units"} /></span>
+                      <span className="font-medium truncate">{category}</span>
+                      <span className="shrink-0 ml-2" style={{ color: "var(--text-muted)" }}>{stock} units</span>
                     </div>
                     <div className="h-2 rounded-full" style={{ background: "var(--border)" }}>
                       <div 
@@ -249,17 +265,20 @@ export default async function Dashboard() {
         <section className="dv-card">
           <div className="flex items-center justify-between mb-4">
             <div>
-              <h2 className="font-semibold"><T text={"Recent sales"} /></h2>
-              <p className="text-xs mt-0.5" style={{ color: "var(--text-muted)" }}><T text={"Latest transactions"} /></p>
+              <h2 className="font-semibold">Recent sales</h2>
+              <p className="text-xs mt-0.5" style={{ color: "var(--text-muted)" }}>Latest transactions</p>
             </div>
-            <Link href="/sales" className="flex items-center gap-1 text-xs font-semibold" style={{ color: "var(--gold-500)" }}> <T text={"View all"} /> <ArrowUpRight size={14} />
+            <Link href="/sales" className="flex items-center gap-1 text-xs font-semibold" style={{ color: "var(--gold-500)" }}>
+              View all <ArrowUpRight size={14} />
             </Link>
           </div>
 
           {sales.length === 0 ? (
             <div className="py-8 text-center" style={{ color: "var(--text-muted)" }}>
-              <p className="text-sm"><T text={"No sales recorded yet."} /></p>
-              <Link href="/sales" className="mt-2 inline-block text-xs font-semibold" style={{ color: "var(--gold-500)" }}> <T text={"Record your first sale →"} /> </Link>
+              <p className="text-sm">No sales recorded yet.</p>
+              <Link href="/sales" className="mt-2 inline-block text-xs font-semibold" style={{ color: "var(--gold-500)" }}>
+                Record your first sale →
+              </Link>
             </div>
           ) : (
             <div className="divide-y" style={{ borderColor: "var(--border)" }}>
@@ -268,13 +287,13 @@ export default async function Dashboard() {
                   <div>
                     <b className="block text-sm font-semibold">{s.product_name}</b>
                     <span className="text-xs" style={{ color: "var(--text-muted)" }}>
-                      {s.qty} <T text={"units ·"} /> <T text={s.payment} /> · {<LocalizedDate value={s.created_at} options={{ hour: "2-digit", minute: "2-digit" }} />}
+                      {s.qty} units · {s.payment} · {new Date(s.created_at).toLocaleTimeString("en-TZ", { hour: "2-digit", minute: "2-digit" })}
                     </span>
                   </div>
                   <div className="text-right shrink-0">
                     <b className="block text-sm font-semibold">{money(s.total)}</b>
-                    <span className={s.status === "Not paid" ? "badge-warn" : s.status === "Returned" ? "badge-returned" : "badge-ok"}>
-                      <T text={s.status === "Not paid" ? "Active" : s.status} />
+                    <span className={s.status === "Not paid" ? "badge-warn" : "badge-ok"}>
+                      {s.status}
                     </span>
                   </div>
                 </div>
@@ -290,17 +309,17 @@ export default async function Dashboard() {
           <section className="dv-card">
             <div className="flex items-center gap-2 mb-4">
               <TrendingUp size={16} style={{ color: "var(--gold-500)" }} />
-              <h2 className="font-semibold"><T text={"Top sellers"} /></h2>
+              <h2 className="font-semibold">Top sellers</h2>
             </div>
             {topSellers.length === 0 ? (
-              <p className="text-sm text-center py-4" style={{ color: "var(--text-muted)" }}><T text={"No data yet"} /></p>
+              <p className="text-sm text-center py-4" style={{ color: "var(--text-muted)" }}>No data yet</p>
             ) : (
               <div className="space-y-4">
                 {topSellers.map(([name, qty]) => (
                   <div key={name}>
                     <div className="flex justify-between text-sm mb-1.5">
                       <span className="font-medium truncate">{name}</span>
-                      <span className="shrink-0 ml-2" style={{ color: "var(--text-muted)" }}>{qty} <T text={"sold"} /></span>
+                      <span className="shrink-0 ml-2" style={{ color: "var(--text-muted)" }}>{qty} sold</span>
                     </div>
                     <div className="h-1.5 rounded-full" style={{ background: "var(--border)" }}>
                       <div className="h-1.5 rounded-full" style={{ width: `${(qty / maxQty) * 100}%`, background: "var(--gold-500)" }} />
@@ -314,13 +333,13 @@ export default async function Dashboard() {
           {/* Low stock */}
           {lowStock.length > 0 && (
             <section className="dv-card">
-              <h2 className="font-semibold mb-3"><T text={"Stock attention"} /></h2>
+              <h2 className="font-semibold mb-3">Stock attention</h2>
               <div className="space-y-2">
                 {lowStock.slice(0, 5).map(p => (
                   <div key={p.id} className="flex justify-between rounded-lg px-3 py-2.5 text-sm"
                     style={{ background: "var(--warning-bg)" }}>
                     <span className="font-medium" style={{ color: "var(--warning)" }}>{p.name}</span>
-                    <span className="font-semibold" style={{ color: "var(--warning)" }}>{p.stock} <T text={"left"} /></span>
+                    <span className="font-semibold" style={{ color: "var(--warning)" }}>{p.stock} left</span>
                   </div>
                 ))}
               </div>
@@ -329,8 +348,10 @@ export default async function Dashboard() {
 
           {products.length === 0 && (
             <section className="dv-card text-center py-6">
-              <p className="text-sm font-medium"><T text={"No products yet"} /></p>
-              <Link href="/inventory" className="mt-1 inline-block text-xs font-semibold" style={{ color: "var(--gold-500)" }}> <T text={"Add your first product →"} /> </Link>
+              <p className="text-sm font-medium">No products yet</p>
+              <Link href="/inventory" className="mt-1 inline-block text-xs font-semibold" style={{ color: "var(--gold-500)" }}>
+                Add your first product →
+              </Link>
             </section>
           )}
         </div>

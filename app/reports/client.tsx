@@ -6,7 +6,7 @@ import {
   CalendarDays, CheckCircle2, Clock3, Download,
   PackageCheck, FileSpreadsheet, FileText, TrendingUp, Loader2, History,
 } from "lucide-react";
-import { getReportSales, getStockLogs } from "@/lib/supabase/client-actions";
+import { getReportSales, getStockLogs } from "@/lib/supabase/server-actions";
 import type { Database } from "@/lib/supabase/types";
 
 type Sale     = Awaited<ReturnType<typeof getReportSales>>[number];

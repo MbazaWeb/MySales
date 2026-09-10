@@ -4,7 +4,7 @@ import BulkProductUpload from "./BulkProductUpload";
 
 import { useMemo, useState, useTransition } from "react";
 import { Search, Plus, X, Package, Loader2, AlertCircle, ChevronDown, Pencil, Trash2 } from "lucide-react";
-import { addStockEntry, createProduct, editProduct, deleteProduct } from "@/lib/supabase/client-actions";
+import { addStockEntry, createProduct, editProduct, deleteProduct } from "@/lib/supabase/server-actions";
 import type { Product } from "@/lib/supabase/types";
 
 const CATEGORIES = [

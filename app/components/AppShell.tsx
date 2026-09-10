@@ -1,6 +1,4 @@
 "use client";
-import { T, useTranslation } from "@/app/components/LanguageProvider";
-
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { 
@@ -9,7 +7,7 @@ import {
   ChevronDown, LogOut, Gem, Bell, Clock
 } from "lucide-react";
 import { useState, useTransition, useCallback, memo } from "react";
-import { signOut } from "@/lib/supabase/client-actions";
+import { signOut } from "@/lib/supabase/server-actions";
 import { Header } from "./Header";
 
 const links = [
@@ -32,7 +30,6 @@ interface AppShellProps {
 }
 
 function AppShell({ title, subtitle, time, children, action, bizName, userName }: AppShellProps) {
-  const { t: translateUi } = useTranslation();
   const path              = usePathname();
   const router            = useRouter();
   const [open, setOpen]   = useState(false);
@@ -60,10 +57,10 @@ function AppShell({ title, subtitle, time, children, action, bizName, userName }
           </div>
           <div>
             <span className="dv-sidebar__wordmark">DukaVerse</span>
-            <span className="dv-sidebar__tagline"><T text={"Business platform"} /></span>
+            <span className="dv-sidebar__tagline">Business platform</span>
           </div>
           {/* Mobile close button inside drawer */}
-          <button className="dv-sidebar__close lg:hidden" onClick={closeSidebar} aria-label={translateUi("Close menu")}>
+          <button className="dv-sidebar__close lg:hidden" onClick={closeSidebar} aria-label="Close menu">
             <X size={18} />
           </button>
         </div>
@@ -71,7 +68,7 @@ function AppShell({ title, subtitle, time, children, action, bizName, userName }
         {/* Active branch pill */}
         {bizName && (
           <div className="dv-sidebar__branch">
-            <p className="dv-sidebar__branch-label"><T text={"Active business"} /></p>
+            <p className="dv-sidebar__branch-label">Active business</p>
             <button className="dv-sidebar__branch-name">
               <span className="truncate">{bizName}</span>
               <ChevronDown size={13} style={{ flexShrink: 0, color: "#4E6A8A" }} />
@@ -93,7 +90,7 @@ function AppShell({ title, subtitle, time, children, action, bizName, userName }
                 prefetch
               >
                 <I size={17} />
-                <T text={l.label} />
+                {l.label}
               </Link>
             );
           })}
@@ -109,7 +106,7 @@ function AppShell({ title, subtitle, time, children, action, bizName, userName }
           )}
           <button onClick={handleSignOut} disabled={pending} className="dv-nav-item dv-nav-item--signout">
             <LogOut size={15} />
-            {pending ? <T text={"Signing out…"} /> : <T text={"Sign out"} />}
+            {pending ? "Signing out…" : "Sign out"}
           </button>
         </div>
       </aside>
@@ -127,7 +124,7 @@ function AppShell({ title, subtitle, time, children, action, bizName, userName }
       <main className="dv-main">
 
         {/* Top header */}
-        <Header title={title} subtitle={subtitle} time={time} action={action} />
+        {/* Header rendered by Header component */}
 
         {/* Page content */}
         <div className="dv-content">{children}</div>
@@ -137,7 +134,7 @@ function AppShell({ title, subtitle, time, children, action, bizName, userName }
       </main>
 
       {/* ══ MOBILE BOTTOM NAV ══ */}
-      <nav className="dv-bottom-nav lg:hidden" role="navigation" aria-label={translateUi("Main navigation")}>
+      <nav className="dv-bottom-nav lg:hidden" role="navigation" aria-label="Main navigation">
         {links.map(l => {
           const I = l.icon;
           const active = path === l.href;
@@ -151,7 +148,7 @@ function AppShell({ title, subtitle, time, children, action, bizName, userName }
             >
               {active && <span className="dv-bottom-nav__indicator" aria-hidden="true" />}
               <I size={22} strokeWidth={active ? 2.2 : 1.8} />
-              <span className="dv-bottom-nav__label"><T text={l.shortLabel} /></span>
+              <span className="dv-bottom-nav__label">{l.shortLabel}</span>
             </Link>
           );
         })}

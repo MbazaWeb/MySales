@@ -1,19 +1,16 @@
 "use client";
-import { useTranslation } from "@/app/components/LanguageProvider";
-
 import { useState, useEffect } from "react";
 import { Moon, Sun } from "lucide-react";
 
 type Theme = "light" | "dark";
 
 export function ThemeToggle() {
-  const { t: translateUi } = useTranslation();
   const [theme, setTheme] = useState<Theme>("light");
 
   useEffect(() => {
-    const saved = localStorage.getItem("dv_theme") as Theme;
+    const saved       = localStorage.getItem("dv_theme") as Theme;
     const prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
-    const initial = saved || (prefersDark ? "dark" : "light");
+    const initial     = saved || (prefersDark ? "dark" : "light");
     setTheme(initial);
     applyTheme(initial);
   }, []);
@@ -36,10 +33,10 @@ export function ThemeToggle() {
       className="rounded-lg p-2 transition-colors"
       style={{
         background: "var(--surface)",
-        border: "1px solid var(--border)",
-        color: "var(--text-secondary)",
+        border:     "1px solid var(--border)",
+        color:      "var(--text-secondary)",
       }}
-      aria-label={translateUi("Toggle theme")}
+      aria-label="Toggle theme"
     >
       {theme === "light" ? (
         <Moon size={18} />

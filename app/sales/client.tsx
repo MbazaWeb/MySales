@@ -3,7 +3,7 @@ import { T, useTranslation } from "@/app/components/LanguageProvider";
 
 import { useMemo, useState, useTransition } from "react";
 import { Plus, Search, X, Loader2, AlertCircle, User, Phone, CheckCircle2, RotateCcw, PackageCheck } from "lucide-react";
-import { recordSale, markSalePaid, returnSale } from "@/lib/supabase/client-actions";
+import { recordSale, markSalePaid, returnSale } from "@/lib/supabase/server-actions";
 import type { Sale, Product } from "@/lib/supabase/types";
 
 function money(n: number) { return `TZS ${n.toLocaleString("en-TZ")}`; }

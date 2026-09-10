@@ -14,19 +14,19 @@ export const metadata: Metadata = {
     title: "DukaVerse",
   },
   icons: {
-    icon:      [{ url: "/favicon.png", type: "image/png" }, { url: "/app-icon.png", type: "image/png", sizes: "1254x1254" }],
-    shortcut:  "/favicon.png",
-    apple:     "/apple-touch-icon.png",
+    icon:     [{ url: "/favicon.png", type: "image/png" }, { url: "/app-icon.png", type: "image/png", sizes: "1254x1254" }],
+    shortcut: "/favicon.png",
+    apple:    "/apple-touch-icon.png",
   },
 };
 
 export const viewport: Viewport = {
-  width:                    "device-width",
-  initialScale:             1,
-  maximumScale:             1,
-  userScalable:             false,
-  viewportFit:              "cover",
-  themeColor:               "#0F1B2D",
+  width:           "device-width",
+  initialScale:    1,
+  maximumScale:    1,
+  userScalable:    false,
+  viewportFit:     "cover",
+  themeColor:      "#0F1B2D",
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
@@ -40,18 +40,12 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
       </head>
       <body className="antialiased">
-        <ThemeWrapper>
         <ShimmerCSS />
         <SplashScreen />
-        {children}
+        <ThemeWrapper>
+          {children}
         </ThemeWrapper>
       </body>
     </html>
   );
 }
-
-
-
-
-
-
