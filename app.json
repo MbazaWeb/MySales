@@ -1,0 +1,48 @@
+{
+  "expo": {
+    "name": "DukaVerse",
+    "slug": "dukaverse",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon":               "./assets/images/app-icon.png",
+    "scheme":             "dukaverse",
+    "userInterfaceStyle": "automatic",
+    "newArchEnabled":     true,
+    "ios": {
+      "supportsTablet":   false,
+      "bundleIdentifier": "com.mbazzaweb.dukaverse",
+      "infoPlist": {
+        "NSFaceIDUsageDescription": "Use Face ID to sign in securely"
+      }
+    },
+    "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/images/adaptive-icon.png",
+        "backgroundColor": "#0F1B2D"
+      },
+      "package":     "com.mbazzaweb.dukaverse",
+      "edgeToEdgeEnabled": true
+    },
+    "web": {
+      "bundler": "metro",
+      "output":  "static",
+      "favicon": "./assets/images/favicon.png"
+    },
+    "plugins": [
+      "expo-router",
+      "expo-font",
+      "expo-secure-store",
+      [
+        "expo-splash-screen",
+        {
+          "backgroundColor":  "#0F1B2D",
+          "image":            "./assets/images/splash-icon.png",
+          "imageWidth":       200
+        }
+      ]
+    ],
+    "experiments": {
+      "typedRoutes": true
+    }
+  }
+}
