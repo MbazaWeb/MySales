@@ -139,50 +139,45 @@ export async function verifyOtp(formData: FormData) {
 }
 
 export async function signUp(formData: FormData) {
-  const supabase = await createClient();
+  const supabase   = await createClient();
+  const identifier = (formData.get("identifier") as string)?.trim();
+  const password   = formData.get("password")  as string;
+  const full_name  = formData.get("full_name")  as string;
+  const biz_name   = formData.get("biz_name")   as string;
+  const biz_type   = formData.get("biz_type")   as string;
+  const biz_loc    = formData.get("biz_loc")    as string;
 
-  const email     = formData.get("email")    as string;
-  const password  = formData.get("password") as string;
-  const full_name = formData.get("full_name") as string;
-  const phone     = formData.get("phone")    as string;
-  const biz_name  = formData.get("biz_name") as string;
-  const biz_type  = formData.get("biz_type") as string;
-  const biz_loc   = formData.get("biz_loc")  as string;
+  const isEmail = identifier.includes("@");
+  const metaData = {
+    full_name,
+    business_name:     biz_name,
+    business_type:     biz_type,
+    branch_name:       biz_name,
+    business_location: biz_loc,
+  };
 
-  // 1. Create auth user
-  const { data: authData, error: authErr } = await supabase.auth.signUp({
-    email,
-    password,
-    options: {
-      data: {
-        full_name,
-        phone,
-        business_name: biz_name,
-        business_type: biz_type,
-        branch_name: biz_name,
-        business_location: biz_loc,
-      },
-    },
-  });
+  const { data: authData, error: authErr } = isEmail
+    ? await supabase.auth.signUp({ email: identifier, password, options: { data: metaData } })
+    : await supabase.auth.signUp({ phone: identifier, password, options: { data: metaData } });
+
   if (authErr) return { error: friendlyAuthError(authErr.message, authErr.code) };
-
-  if (!authData.user) {
-    return { error: "Account creation did not return a user. Please try again." };
-  }
+  if (!authData.user) return { error: "Account creation did not return a user. Please try again." };
 
   revalidatePath("/dashboard");
-  return {
-    success: true,
-    requiresEmailConfirmation: !authData.session,
-  };
+  return { success: true };
 }
 
 export async function signIn(formData: FormData) {
-  const supabase = await createClient();
-  const { error } = await supabase.auth.signInWithPassword({
-    email:    formData.get("email")    as string,
-    password: formData.get("password") as string,
-  });
+  const supabase   = await createClient();
+  const identifier = (formData.get("identifier") as string)?.trim();
+  const password   = formData.get("password") as string;
+  const isEmail    = identifier.includes("@");
+
+  const { error } = await supabase.auth.signInWithPassword(
+    isEmail
+      ? { email: identifier, password }
+      : { phone: identifier, password }
+  );
   if (error) return { error: friendlyAuthError(error.message, error.code) };
   revalidatePath("/dashboard");
   return { success: true };
