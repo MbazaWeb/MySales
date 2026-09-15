@@ -1,5 +1,6 @@
 "use client";
 import { useState, useTransition } from "react";
+import { REGIONS, getDistricts } from "@/lib/tanzania";
 import {
   Bell, Building2, Check, Crown, Mail, Eye, EyeOff,
   MessageSquareText, Plus, ShieldCheck, UserPlus, X, Loader2,

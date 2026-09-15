@@ -3,6 +3,7 @@ import { Suspense, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { ArrowRight, Check, Eye, EyeOff, AlertCircle, Loader2 } from "lucide-react";
 import { signIn, signUp } from "@/lib/supabase/server-actions";
+import { REGIONS, getDistricts } from "@/lib/tanzania";
 
 export default function Auth() {
   return (
@@ -33,7 +34,7 @@ function AuthContent() {
 
   // Register-only fields
   const [fullName, setFullName] = useState("");
-  const [biz,      setBiz]      = useState({ name: "", type: "Bar", location: "" });
+  const [biz,      setBiz]      = useState({ name: "", type: "Bar", region: "", district: "", ward: "" });
 
   function identifier() {
     return field === "email" ? email.trim() : `${cc}${mobile.replace(/\D/g, "")}`;
@@ -75,14 +76,16 @@ function AuthContent() {
     e.preventDefault();
     setError(null);
     if (!biz.name.trim())     { setError("Enter your business name."); return; }
-    if (!biz.location.trim()) { setError("Enter your branch location."); return; }
+    if (!biz.region)          { setError("Select your region."); return; }
+    if (!biz.district)        { setError("Select your district."); return; }
     const fd = new FormData();
     fd.append("full_name",  fullName.trim());
     fd.append("identifier", identifier());
     fd.append("password",   password);
     fd.append("biz_name",   biz.name.trim());
     fd.append("biz_type",   biz.type);
-    fd.append("biz_loc",    biz.location.trim());
+    const location = [biz.district, biz.region, "Tanzania"].filter(Boolean).join(", ");
+    fd.append("biz_loc", location);
     start(async () => {
       const res = await signUp(fd);
       if ("error" in res && res.error) { setError(res.error); return; }
@@ -222,8 +225,34 @@ function AuthContent() {
                   <option>Other</option>
                 </select>
               </div>
-              <TextField label="Branch location" placeholder="Town, district or region"
-                value={biz.location} onChange={v => setBiz(b => ({ ...b, location: v }))} />
+              {/* ── Tanzania location cascade ── */}
+              <div>
+                <label className="form-label">Region</label>
+                <select className="dv-select" value={biz.region}
+                  onChange={e => setBiz(b => ({ ...b, region: e.target.value, district: "", ward: "" }))}>
+                  <option value="">Select region…</option>
+                  {REGIONS.map(r => <option key={r} value={r}>{r}</option>)}
+                </select>
+              </div>
+
+              {biz.region && (
+                <div>
+                  <label className="form-label">District</label>
+                  <select className="dv-select" value={biz.district}
+                    onChange={e => setBiz(b => ({ ...b, district: e.target.value, ward: "" }))}>
+                    <option value="">Select district…</option>
+                    {getDistricts(biz.region).map(d => <option key={d} value={d}>{d}</option>)}
+                  </select>
+                </div>
+              )}
+
+              {biz.district && (
+                <div>
+                  <label className="form-label">Ward / Street <span style={{ color: "var(--text-muted)", fontWeight: 400 }}>(optional)</span></label>
+                  <input className="dv-input" placeholder="e.g. Kariakoo, Msasani, Mikocheni…"
+                    value={biz.ward} onChange={e => setBiz(b => ({ ...b, ward: e.target.value }))} />
+                </div>
+              )}
               <button type="submit" disabled={pending} className="btn-gold w-full justify-center py-3">
                 {pending ? <Loader2 size={17} className="animate-spin" /> : "Create account & start trial"}
               </button>
