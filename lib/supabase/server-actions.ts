@@ -199,7 +199,7 @@ export async function getActiveBranch() {
 
   let { data: biz } = await supabase
     .from("businesses")
-    .select("id, name, type")
+    .select("id, name, type, trial_ends_at")
     .eq("owner_id", user.id)
     .order("created_at")
     .limit(1)
@@ -217,7 +217,7 @@ export async function getActiveBranch() {
     if (membership) {
       const result = await supabase
         .from("businesses")
-        .select("id, name, type")
+        .select("id, name, type, trial_ends_at")
         .eq("id", membership.business_id)
         .maybeSingle();
       biz = result.data;

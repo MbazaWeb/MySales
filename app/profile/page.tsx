@@ -21,6 +21,7 @@ export default async function ProfilePage() {
       time={currentTime}
       branchId={ctx.branch.id}
       bizName={ctx.biz.name}
+      trialEndsAt={ctx.biz.trial_ends_at ?? null}
       userName={ctx.user.user_metadata?.full_name ?? ctx.user.email}
     >
       <ProfileClient

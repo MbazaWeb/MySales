@@ -101,7 +101,8 @@ export default async function Dashboard() {
       subtitle={subtitle} 
       time={currentTime}
       branchId={ctx.branch.id} 
-      bizName={ctx.biz.name} 
+      bizName={ctx.biz.name}
+      trialEndsAt={ctx.biz.trial_ends_at ?? null} 
       userName={ctx.user.user_metadata?.full_name ?? ctx.user.email}
     >
 
