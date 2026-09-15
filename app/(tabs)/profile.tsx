@@ -4,6 +4,7 @@ import { SafeAreaView }  from "react-native-safe-area-context";
 import { Ionicons }      from "@expo/vector-icons";
 import { useRouter }     from "expo-router";
 import { useAppCtx }     from "@/lib/context";
+import { REGIONS, getDistricts } from "@/lib/tanzania";
 import { signOut, getBranches } from "@/lib/supabase/api";
 import { C }             from "@/lib/colors";
 import { Card, SectionHeader } from "@/components/UI";
