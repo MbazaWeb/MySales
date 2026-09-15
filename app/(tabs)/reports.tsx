@@ -91,7 +91,7 @@ export default function ReportsScreen() {
         <Card style={{ marginTop: 14 }}>
           <SectionHeader title="Sales breakdown" />
           {sales.length === 0 ? (
-            <EmptyState icon="📋" title="No sales in this period" />
+            <EmptyState icon="" title="No sales in this period" />
           ) : (
             sales.map((sale, i) => (
               <View key={sale.id}>

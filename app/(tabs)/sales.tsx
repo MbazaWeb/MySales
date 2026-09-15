@@ -111,7 +111,7 @@ export default function SalesScreen() {
         keyExtractor={item => item.id}
         refreshControl={<RefreshControl refreshing={loading} onRefresh={refresh} tintColor={C.gold500} />}
         contentContainerStyle={{ padding: 16, paddingBottom: 32 }}
-        ListEmptyComponent={<EmptyState icon="🧾" title="No sales yet" sub="Tap + New sale to record your first transaction." />}
+        ListEmptyComponent={<EmptyState icon="" title="No sales yet" sub="Tap + New sale to record your first transaction." />}
         ItemSeparatorComponent={() => <View style={{ height: 1, backgroundColor: C.border, marginHorizontal: 4 }} />}
         renderItem={({ item }) => (
           <View style={s.row}>

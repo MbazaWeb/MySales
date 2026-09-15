@@ -119,10 +119,10 @@ export function Badge({ label, variant }: { label: string; variant: "ok" | "warn
 }
 
 // ── Empty state ───────────────────────────────────────────────────────────────
-export function EmptyState({ icon, title, sub }: { icon: string; title: string; sub?: string }) {
+export function EmptyState({ icon, title, sub }: { icon?: string; title: string; sub?: string }) {
   return (
     <View style={s.empty}>
-      <Text style={s.emptyIcon}>{icon}</Text>
+      {!!icon && <Text style={s.emptyIcon}>{icon}</Text>}
       <Text style={s.emptyTitle}>{title}</Text>
       {sub && <Text style={s.emptySub}>{sub}</Text>}
     </View>

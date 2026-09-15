@@ -132,8 +132,8 @@ export default function ProfileScreen() {
                 <Text style={[s.planNote, selectedPlan === p.key && { color: "rgba(255,255,255,0.6)" }, p.best && !selectedPlan && { color: C.gold500 }]}>
                   {p.note}
                 </Text>
-                {(p.best && !selectedPlan) && <Text style={s.bestTag}>⭐ Recommended</Text>}
-                {selectedPlan === p.key && <Text style={{ fontSize: 11, color: C.gold300, marginTop: 4 }}>✓ Selected</Text>}
+                {(p.best && !selectedPlan) && <Text style={s.bestTag}>Recommended</Text>}
+                {selectedPlan === p.key && <Text style={{ fontSize: 11, color: C.gold300, marginTop: 4 }}>Selected</Text>}
               </TouchableOpacity>
             ))}
           </View>

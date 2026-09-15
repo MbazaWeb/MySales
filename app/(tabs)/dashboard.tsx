@@ -39,13 +39,13 @@ export default function DashboardScreen() {
         {loading && !data ? (
           <ActivityIndicator color={C.gold500} size="large" style={{ marginTop: 40 }} />
         ) : !data ? (
-          <EmptyState icon="📊" title="No data yet" sub="Add products and record sales to see your dashboard." />
+          <EmptyState icon="" title="No data yet" sub="Add products and record sales to see your dashboard." />
         ) : (
           <>
             {/* Low stock alert */}
             {data.lowStock.length > 0 && (
               <View style={s.alertBanner}>
-                <Text style={s.alertText}>⚠️ {data.lowStock.length} items need restocking</Text>
+                <Text style={s.alertText}>{data.lowStock.length} items need restocking</Text>
                 <Text style={s.alertSub}>{data.lowStock.map(p => p.name).join(", ")}</Text>
               </View>
             )}
@@ -64,7 +64,7 @@ export default function DashboardScreen() {
             <Card style={{ marginTop: 16 }}>
               <SectionHeader title="Recent sales" action="See all" onAction={() => {}} />
               {data.todaySales.length === 0 ? (
-                <EmptyState icon="🧾" title="No sales today" sub="Record your first sale." />
+                <EmptyState icon="" title="No sales today" sub="Record your first sale." />
               ) : (
                 data.todaySales.slice(0, 5).map((s, i) => (
                   <View key={s.id}>

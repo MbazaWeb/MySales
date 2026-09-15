@@ -95,7 +95,7 @@ export default function AuthScreen() {
       {/* Hero */}
       <LinearGradient colors={[C.navy900, "#162844"]} style={s.hero}>
         <View style={s.logoWrap}>
-          <Text style={s.logoGem}>◆</Text>
+          <Text style={s.logoGem}>DV</Text>
         </View>
         <Text style={s.wordmark}>DukaVerse</Text>
         <Text style={s.tagline}>Business platform</Text>
@@ -156,7 +156,7 @@ export default function AuthScreen() {
               style={[s.fieldBtn, field === f && s.fieldBtnActive]}
             >
               <Text style={[s.fieldBtnText, field === f && s.fieldBtnTextActive]}>
-                {f === "email" ? "📧 Email" : "📱 Phone"}
+                {f === "email" ? "Email" : "Phone"}
               </Text>
             </TouchableOpacity>
           ))}
@@ -223,7 +223,7 @@ export default function AuthScreen() {
         {mode === "register" && (
           <View style={s.noteBox}>
             <Text style={s.noteText}>
-              ℹ️  After registering, complete your business profile on the web at{" "}
+              After registering, complete your business profile on the web at{" "}
               <Text style={{ color: C.gold500 }}>my-sales-flax.vercel.app</Text>
               {" "}to set up your branch and products.
             </Text>

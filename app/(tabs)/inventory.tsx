@@ -143,7 +143,7 @@ export default function InventoryScreen() {
         keyExtractor={item => item.id}
         refreshControl={<RefreshControl refreshing={loading} onRefresh={refresh} tintColor={C.gold500} />}
         contentContainerStyle={{ padding: 12, paddingBottom: 32 }}
-        ListEmptyComponent={<EmptyState icon="📦" title="No products yet" sub="Tap + to add your first product." />}
+        ListEmptyComponent={<EmptyState icon="" title="No products yet" sub="Tap + to add your first product." />}
         renderItem={({ item: p }) => {
           const low    = p.stock <= p.reorder;
           const profit = (p.selling_price ?? p.price) - (p.cost_price ?? 0);
