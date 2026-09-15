@@ -145,8 +145,8 @@ function AuthContent() {
               <button key={m} onClick={() => switchMode(m)}
                 className="flex-1 rounded-md py-2.5 text-sm font-semibold transition-colors"
                 style={mode === m
-                  ? { background: "var(--surface)", color: "var(--navy-700)", boxShadow: "0 1px 4px rgba(0,0,0,0.1)" }
-                  : { color: "var(--text-muted)" }}>
+                  ? { background: "var(--navy-500)", color: "#ffffff", boxShadow: "0 1px 4px rgba(0,0,0,0.3)" }
+                  : { color: "#ffffff", opacity: 0.55 }}>
                 {m === "login" ? "Sign in" : "Create account"}
               </button>
             ))}
