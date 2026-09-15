@@ -458,27 +458,27 @@ export default function ProfileClient({
                 </p>
                 {form.staff_role === "Manager" && (
                   <ul className="text-xs space-y-1" style={{ color: "var(--text-muted)" }}>
-                    <li>✓ Record sales</li>
-                    <li>✓ Add and update inventory</li>
-                    <li>✓ View branch reports</li>
-                    <li>✗ Cannot see other branches</li>
-                    <li>✗ Cannot manage staff</li>
+                    <li>· Record sales</li>
+                    <li>· Add and update inventory</li>
+                    <li>· View branch reports</li>
+                    <li>✕ Cannot see other branches</li>
+                    <li>✕ Cannot manage staff</li>
                   </ul>
                 )}
                 {form.staff_role === "Cashier" && (
                   <ul className="text-xs space-y-1" style={{ color: "var(--text-muted)" }}>
-                    <li>✓ Record sales</li>
-                    <li>✓ View inventory levels</li>
-                    <li>✗ Cannot add or edit products</li>
-                    <li>✗ Cannot see other branches</li>
+                    <li>· Record sales</li>
+                    <li>· View inventory levels</li>
+                    <li>✕ Cannot add or edit products</li>
+                    <li>✕ Cannot see other branches</li>
                   </ul>
                 )}
                 {form.staff_role === "Stock keeper" && (
                   <ul className="text-xs space-y-1" style={{ color: "var(--text-muted)" }}>
-                    <li>✓ Add and update inventory</li>
-                    <li>✓ View stock levels</li>
-                    <li>✗ Cannot record sales</li>
-                    <li>✗ Cannot see other branches</li>
+                    <li>· Add and update inventory</li>
+                    <li>· View stock levels</li>
+                    <li>✕ Cannot record sales</li>
+                    <li>✕ Cannot see other branches</li>
                   </ul>
                 )}
               </div>

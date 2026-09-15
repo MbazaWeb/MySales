@@ -65,7 +65,7 @@ export function LanguageToggle({ className }: { className?: string }) {
               >
                 {labels[lang]}
                 {language === lang && (
-                  <span className="ml-2" style={{ color: "var(--gold-500)" }}>✓</span>
+                  <span className="ml-2" style={{ color: "var(--gold-500)" }}>✔</span>
                 )}
               </button>
             ))}

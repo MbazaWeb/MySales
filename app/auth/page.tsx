@@ -250,7 +250,7 @@ function FieldToggle({ value, onChange }: { value: Field; onChange: (v: Field) =
           style={value === f
             ? { background: "var(--navy-700)", borderColor: "var(--navy-700)", color: "#fff" }
             : { background: "var(--surface)", borderColor: "var(--border)", color: "var(--text-secondary)" }}>
-          {f === "email" ? "📧 Email" : "📱 Mobile"}
+          {f === "email" ? "Email" : "Mobile"}
         </button>
       ))}
     </div>
