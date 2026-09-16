@@ -156,9 +156,17 @@ export async function signUp(formData: FormData) {
     business_location: biz_loc,
   };
 
-  const { data: authData, error: authErr } = isEmail
-    ? await supabase.auth.signUp({ email: identifier, password, options: { data: metaData } })
-    : await supabase.auth.signUp({ phone: identifier, password, options: { data: metaData } });
+  // Phone provider is disabled in Supabase — always sign up with email.
+  // Phone number is stored in user_metadata for reference only.
+  if (!isEmail) {
+    return { error: "Phone sign-up is not supported. Please use your email address to register." };
+  }
+
+  const { data: authData, error: authErr } = await supabase.auth.signUp({
+    email: identifier,
+    password,
+    options: { data: { ...metaData } },
+  });
 
   if (authErr) return { error: friendlyAuthError(authErr.message, authErr.code) };
   if (!authData.user) return { error: "Account creation did not return a user. Please try again." };
@@ -173,11 +181,30 @@ export async function signIn(formData: FormData) {
   const password   = formData.get("password") as string;
   const isEmail    = identifier.includes("@");
 
-  const { error } = await supabase.auth.signInWithPassword(
-    isEmail
-      ? { email: identifier, password }
-      : { phone: identifier, password }
-  );
+  // Phone provider is disabled — phone users must sign in with email.
+  // If they registered with phone, we look up their email from profiles.
+  let loginEmail = isEmail ? identifier : null;
+
+  if (!isEmail) {
+    // Look up email by phone stored in user_metadata
+    const { createAdminClient } = await import("./admin");
+    const admin = createAdminClient();
+    const { data: { users } } = await admin.auth.admin.listUsers({ perPage: 1000 });
+    const match = users.find(u =>
+      u.user_metadata?.phone === identifier ||
+      u.phone === identifier
+    );
+    if (match?.email) {
+      loginEmail = match.email;
+    } else {
+      return { error: "No account found with that phone number. Try signing in with email instead." };
+    }
+  }
+
+  const { error } = await supabase.auth.signInWithPassword({
+    email: loginEmail!,
+    password,
+  });
   if (error) return { error: friendlyAuthError(error.message, error.code) };
   revalidatePath("/dashboard");
   return { success: true };

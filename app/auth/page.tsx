@@ -267,10 +267,10 @@ function AuthContent() {
                 Sign in to your business account.
               </p>
               <form onSubmit={handleLogin} className="space-y-4">
-                <FieldToggle value={field} onChange={f => { setField(f); setEmail(""); setMobile(""); }} />
-                {field === "email"
-                  ? <TF label="Email address" type="email" placeholder="you@email.com" value={email} onChange={setEmail} />
-                  : <MobileF cc={cc} mobile={mobile} onCc={setCc} onMobile={setMobile} />}
+                <TF label="Email address" type="email" placeholder="you@email.com" value={email} onChange={setEmail} />
+                <p className="text-xs -mt-2" style={{ color: "var(--text-muted)" }}>
+                  Registration requires an email address.
+                </p>
                 <PwF label="Password" value={password} onChange={setPassword}
                   show={showPw} onToggle={() => setShowPw(!showPw)} placeholder="Your password" />
                 <button type="submit" disabled={pending} className="btn-gold w-full justify-center py-3">
@@ -291,10 +291,10 @@ function AuthContent() {
               <p className="text-sm mb-6" style={{ color: "var(--text-muted)" }}>14 days free, no credit card required.</p>
               <form onSubmit={handleStep1} className="space-y-4">
                 <TF label="Full name" placeholder="e.g. David Mbazza" value={fullName} onChange={setFullName} />
-                <FieldToggle value={field} onChange={f => { setField(f); setEmail(""); setMobile(""); }} />
-                {field === "email"
-                  ? <TF label="Email address" type="email" placeholder="you@email.com" value={email} onChange={setEmail} />
-                  : <MobileF cc={cc} mobile={mobile} onCc={setCc} onMobile={setMobile} />}
+                <TF label="Email address" type="email" placeholder="you@email.com" value={email} onChange={setEmail} />
+                <p className="text-xs -mt-2" style={{ color: "var(--text-muted)" }}>
+                  Registration requires an email address.
+                </p>
                 <PwF label="Password" value={password} onChange={setPassword}
                   show={showPw} onToggle={() => setShowPw(!showPw)}
                   placeholder="At least 8 characters" hint="Minimum 8 characters" />
