@@ -790,3 +790,58 @@ export async function getStockLogs(branchId: string) {
   if (error) throw new Error(error.message);
   return data ?? [];
 }
+
+// ── Security question / password reset ───────────────────────────────────────
+
+export async function setSecurityQuestion(formData: FormData) {
+  const supabase = await createClient();
+  const question = formData.get("question") as string;
+  const answer   = formData.get("answer")   as string;
+
+  if (!question?.trim()) return { error: "Please select a security question." };
+  if (!answer?.trim())   return { error: "Please enter your answer." };
+
+  const { error } = await (supabase as any).rpc("set_security_question", {
+    p_question: question.trim(),
+    p_answer:   answer.trim(),
+  });
+  if (error) return { error: error.message };
+  return { success: true };
+}
+
+export async function getSecurityQuestion(email: string) {
+  const supabase = await createClient();
+  const { data, error } = await (supabase as any).rpc("get_security_question", {
+    p_email: email.trim(),
+  });
+  if (error) return { error: error.message };
+  return { question: data as string };
+}
+
+export async function resetPasswordWithAnswer(formData: FormData) {
+  const email       = formData.get("email")       as string;
+  const answer      = formData.get("answer")      as string;
+  const newPassword = formData.get("new_password") as string;
+
+  if (!newPassword || newPassword.length < 8)
+    return { error: "New password must be at least 8 characters." };
+
+  // 1. Verify the answer — returns user id or throws
+  const supabase = await createClient();
+  const { data: userId, error: verifyErr } = await (supabase as any).rpc("verify_security_answer", {
+    p_email:  email.trim(),
+    p_answer: answer.trim(),
+  });
+  if (verifyErr) return { error: verifyErr.message };
+
+  // 2. Use admin client to update the password
+  const { createAdminClient } = await import("./admin");
+  const admin = createAdminClient();
+  const { error: updateErr } = await admin.auth.admin.updateUserById(
+    userId as string,
+    { password: newPassword }
+  );
+  if (updateErr) return { error: updateErr.message };
+
+  return { success: true };
+}
