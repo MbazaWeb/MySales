@@ -890,3 +890,158 @@ export async function getActiveSubscription(businessId: string) {
 
   return data ?? null;
 }
+
+// ── In-app STK / USSD push payment ───────────────────────────────────────────
+
+const OPERATOR_CODES: Record<string, string> = {
+  "M-Pesa":      "63902",
+  "Airtel Money": "63903",
+  "Tigo Pesa":   "63910",
+  "Halo Pesa":   "62500",
+};
+
+export async function initiateSTKPush(formData: FormData) {
+  const supabase   = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return { error: "Authentication required." };
+
+  const planKey    = formData.get("plan")         as string;
+  const businessId = formData.get("business_id")  as string;
+  const operator   = formData.get("operator")     as string;
+  const rawPhone   = formData.get("phone")        as string;
+  const plan       = PLAN_PRICES[planKey];
+  if (!plan) return { error: "Invalid plan." };
+
+  // Normalize phone → 2557XXXXXXXX
+  const phone = normalizePhone(rawPhone);
+  if (!phone) return { error: "Enter a valid Tanzanian mobile number." };
+
+  // Generate short reference
+  const ref = `DV-${Date.now().toString(36).toUpperCase().slice(-6)}`;
+
+  // Dev mode — no Pesapal keys
+  if (!process.env.PESAPAL_CONSUMER_KEY) {
+    return {
+      mock:      true,
+      ref,
+      phone,
+      operator,
+      plan:      plan.label,
+      amount:    plan.amount,
+      businessId,
+      planKey,
+      message:   `Confirm payment of TZS ${plan.amount.toLocaleString("en-TZ")} on your phone.`,
+    };
+  }
+
+  try {
+    const token = await getPesapalToken();
+
+    // Register IPN
+    const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
+    const ipnRes = await fetch("https://pay.pesapal.com/v3/api/URLSetup/RegisterIPN", {
+      method:  "POST",
+      headers: { "Content-Type": "application/json", Accept: "application/json", Authorization: `Bearer ${token}` },
+      body: JSON.stringify({ url: `${appUrl}/api/payment-webhook`, ipn_notification_type: "GET" }),
+    });
+    const ipnData = await ipnRes.json() as { ipn_id?: string };
+    const ipnId   = ipnData.ipn_id ?? process.env.PESAPAL_IPN_ID;
+
+    // Submit order with mobile money details
+    const orderRes = await fetch("https://pay.pesapal.com/v3/api/Transactions/SubmitOrderRequest", {
+      method:  "POST",
+      headers: { "Content-Type": "application/json", Accept: "application/json", Authorization: `Bearer ${token}` },
+      body: JSON.stringify({
+        id:              ref,
+        currency:        "TZS",
+        amount:          plan.amount,
+        description:     `DukaVerse ${plan.label} subscription`,
+        callback_url:    `${appUrl}/payment-success?plan=${planKey}&business_id=${businessId}`,
+        notification_id: ipnId,
+        billing_address: {
+          email_address:   user.email,
+          phone_number:    phone,
+          first_name:      (user.user_metadata?.full_name as string ?? "").split(" ")[0] || "Customer",
+          last_name:       (user.user_metadata?.full_name as string ?? "").split(" ").slice(1).join(" ") || ".",
+          country_code:    "TZ",
+        },
+        // Request mobile money push
+        payment_method:  OPERATOR_CODES[operator] ? "MPESA" : undefined,
+      }),
+    });
+
+    const orderData = await orderRes.json() as { order_tracking_id?: string; redirect_url?: string; message?: string };
+    if (!orderData.order_tracking_id) return { error: orderData.message ?? "Payment initiation failed." };
+
+    return {
+      mock:       false,
+      ref,
+      phone,
+      operator,
+      plan:       plan.label,
+      amount:     plan.amount,
+      businessId,
+      planKey,
+      trackingId: orderData.order_tracking_id,
+      message:    `A payment request of TZS ${plan.amount.toLocaleString("en-TZ")} has been sent to ${phone}. Check your phone and follow the prompts.`,
+    };
+  } catch (err: any) {
+    return { error: err.message ?? "Payment service unavailable." };
+  }
+}
+
+
+
+export async function checkPaymentStatus(trackingId: string) {
+  if (!process.env.PESAPAL_CONSUMER_KEY) return { status: "mock" };
+
+  try {
+    const token = await getPesapalToken();
+    const res = await fetch(
+      `https://pay.pesapal.com/v3/api/Transactions/GetTransactionStatus?orderTrackingId=${trackingId}`,
+      { headers: { Authorization: `Bearer ${token}`, Accept: "application/json" } }
+    );
+    const data = await res.json() as { payment_status_description?: string; amount?: number };
+    return {
+      status: data.payment_status_description === "Completed" ? "completed"
+            : data.payment_status_description === "Failed"    ? "failed"
+            : "pending",
+      amount: data.amount,
+    };
+  } catch {
+    return { status: "pending" };
+  }
+}
+
+export async function activateSubscriptionAfterPayment(formData: FormData) {
+  const businessId = formData.get("business_id") as string;
+  const planKey    = formData.get("plan")         as string;
+  const ref        = formData.get("ref")          as string;
+  const plan       = PLAN_PRICES[planKey];
+  if (!plan || !businessId) return { error: "Invalid data." };
+
+  const { createAdminClient } = await import("./admin");
+  const admin = createAdminClient();
+
+  const now    = new Date();
+  const endsAt = new Date(now);
+  endsAt.setMonth(endsAt.getMonth() + plan.months);
+
+  await admin.from("subscriptions").insert({
+    business_id:        businessId,
+    billing_interval:   plan.label as any,
+    status:             "Active" as const,
+    amount_tzs:         plan.amount,
+    provider:           "pesapal",
+    provider_reference: ref,
+    starts_at:          now.toISOString(),
+    ends_at:            endsAt.toISOString(),
+  } as any);
+
+  await admin.from("businesses")
+    .update({ trial_ends_at: endsAt.toISOString() } as any)
+    .eq("id", businessId);
+
+  revalidatePath("/profile");
+  return { success: true };
+}

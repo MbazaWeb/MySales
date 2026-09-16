@@ -19,7 +19,7 @@ export function Header({ title, subtitle, time, action }: HeaderProps) {
           {time && (
             <span className="text-xs" style={{ color: "var(--text-muted)" }}>{time}</span>
           )}
-          <p className="dv-header__subtitle">{subtitle}</p>
+          <p className="dv-header__subtitle" style={{ color: "var(--text-muted)" }}>{subtitle}</p>
         </div>
       </div>
       <div className="dv-header__actions">

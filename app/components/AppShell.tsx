@@ -144,7 +144,7 @@ function AppShell({ title, subtitle, children, action, bizName, userName, trialE
             </button>
             <div className="dv-header__titles">
               <h1 className="dv-header__title">{title}</h1>
-              <p className="dv-header__subtitle">{subtitle}</p>
+              <p className="dv-header__subtitle" style={{ color: "var(--text-muted)" }}>{subtitle}</p>
             </div>
           </div>
 
