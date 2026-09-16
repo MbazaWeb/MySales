@@ -13,8 +13,7 @@ export default function Auth() {
   );
 }
 
-type Mode  = "login" | "register" | "forgot";
-type Field = "email" | "mobile";
+type Mode = "login" | "register" | "forgot";
 
 const SECURITY_QUESTIONS = [
   "What was the name of your first school?",
@@ -28,24 +27,21 @@ const SECURITY_QUESTIONS = [
 ];
 
 function AuthContent() {
-  const router = useRouter();
-  const [mode, setMode]       = useState<Mode>("login");
-  const [field, setField]     = useState<Field>("email");
-  const [step, setStep]       = useState(1);
-  const [showPw, setShowPw]   = useState(false);
-  const [error, setError]     = useState<string | null>(null);
-  const [pending, start]      = useTransition();
+  const router            = useRouter();
+  const [mode, setMode]   = useState<Mode>("login");
+  const [step, setStep]   = useState(1);
+  const [showPw, setShowPw] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [pending, start]  = useTransition();
 
   // Shared
   const [email,    setEmail]    = useState("");
-  const [cc,       setCc]       = useState("+255");
-  const [mobile,   setMobile]   = useState("");
   const [password, setPassword] = useState("");
   const [confirm,  setConfirm]  = useState("");
 
   // Register
   const [fullName, setFullName] = useState("");
-  const [biz,  setBiz]  = useState({ name: "", type: "Bar", region: "", district: "", ward: "" });
+  const [biz, setBiz] = useState({ name: "", type: "Bar", region: "", district: "", ward: "" });
   const [secQ, setSecQ] = useState(SECURITY_QUESTIONS[0]);
   const [secA, setSecA] = useState("");
 
@@ -56,17 +52,16 @@ function AuthContent() {
   const [fpNewPw,    setFpNewPw]    = useState("");
   const [fpStep,     setFpStep]     = useState<"email" | "answer" | "done">("email");
 
-  const identifier = () => field === "email" ? email.trim() : `${cc}${mobile.replace(/\D/g, "")}`;
-
   function resetAll() { setStep(1); setError(null); setPassword(""); setConfirm(""); }
   function switchMode(m: Mode) { setMode(m); resetAll(); }
 
   // ── Login ──────────────────────────────────────────────────────────────────
   function handleLogin(e: React.FormEvent) {
     e.preventDefault(); setError(null);
-    if (!password) { setError("Enter your password."); return; }
+    if (!email.trim()) { setError("Enter your email address."); return; }
+    if (!password)     { setError("Enter your password."); return; }
     const fd = new FormData();
-    fd.append("identifier", identifier());
+    fd.append("identifier", email.trim());
     fd.append("password",   password);
     start(async () => {
       const res = await signIn(fd);
@@ -78,9 +73,9 @@ function AuthContent() {
   // ── Register step 1 ────────────────────────────────────────────────────────
   function handleStep1(e: React.FormEvent) {
     e.preventDefault(); setError(null);
-    if (!fullName.trim())    { setError("Enter your full name."); return; }
-    if (!identifier())       { setError("Enter your email or mobile."); return; }
-    if (password.length < 8) { setError("Password must be at least 8 characters."); return; }
+    if (!fullName.trim())     { setError("Enter your full name."); return; }
+    if (!email.trim())        { setError("Enter your email address."); return; }
+    if (password.length < 8)  { setError("Password must be at least 8 characters."); return; }
     if (password !== confirm) { setError("Passwords do not match."); return; }
     setStep(2);
   }
@@ -88,9 +83,9 @@ function AuthContent() {
   // ── Register step 2 ────────────────────────────────────────────────────────
   function handleStep2(e: React.FormEvent) {
     e.preventDefault(); setError(null);
-    if (!biz.name.trim())  { setError("Enter your business name."); return; }
-    if (!biz.region)       { setError("Select your region."); return; }
-    if (!biz.district)     { setError("Select your district."); return; }
+    if (!biz.name.trim()) { setError("Enter your business name."); return; }
+    if (!biz.region)      { setError("Select your region."); return; }
+    if (!biz.district)    { setError("Select your district."); return; }
     setStep(3);
   }
 
@@ -100,16 +95,15 @@ function AuthContent() {
     if (!secA.trim()) { setError("Enter your answer to the security question."); return; }
     const fd = new FormData();
     fd.append("full_name",  fullName.trim());
-    fd.append("identifier", identifier());
+    fd.append("identifier", email.trim());
     fd.append("password",   password);
     fd.append("biz_name",   biz.name.trim());
     fd.append("biz_type",   biz.type);
     const loc = [biz.ward, biz.district, biz.region, "Tanzania"].filter(Boolean).join(", ");
-    fd.append("biz_loc",    loc);
+    fd.append("biz_loc", loc);
     start(async () => {
       const res = await signUp(fd);
       if ("error" in res && res.error) { setError(res.error); return; }
-      // Save security question after signup (user is now logged in)
       const qfd = new FormData();
       qfd.append("question", secQ);
       qfd.append("answer",   secA.trim());
@@ -118,7 +112,7 @@ function AuthContent() {
     });
   }
 
-  // ── Forgot — step 1: look up question ──────────────────────────────────────
+  // ── Forgot step 1 ──────────────────────────────────────────────────────────
   function handleFpEmail(e: React.FormEvent) {
     e.preventDefault(); setError(null);
     if (!fpEmail.trim()) { setError("Enter your email address."); return; }
@@ -130,11 +124,11 @@ function AuthContent() {
     });
   }
 
-  // ── Forgot — step 2: verify answer + set new password ─────────────────────
+  // ── Forgot step 2 ──────────────────────────────────────────────────────────
   function handleFpReset(e: React.FormEvent) {
     e.preventDefault(); setError(null);
-    if (!fpAnswer.trim())    { setError("Enter your answer."); return; }
-    if (fpNewPw.length < 8)  { setError("New password must be at least 8 characters."); return; }
+    if (!fpAnswer.trim())   { setError("Enter your answer."); return; }
+    if (fpNewPw.length < 8) { setError("New password must be at least 8 characters."); return; }
     const fd = new FormData();
     fd.append("email",        fpEmail.trim());
     fd.append("answer",       fpAnswer.trim());
@@ -146,7 +140,7 @@ function AuthContent() {
     });
   }
 
-  const steps = mode === "register" ? ["Account", "Business", "Security"] : [];
+  const steps = ["Account", "Business", "Security"];
 
   return (
     <main className="min-h-screen p-4 sm:grid sm:place-items-center"
@@ -188,7 +182,8 @@ function AuthContent() {
 
           {/* Mobile logo */}
           <div className="mb-6 flex items-center gap-3 lg:hidden">
-            <span className="grid size-9 place-items-center rounded-xl" style={{ background: "var(--navy-700)" }}>
+            <span className="grid size-9 place-items-center rounded-xl"
+              style={{ background: "var(--navy-700)" }}>
               <img src="/logo.png" alt="" className="size-7 object-contain" />
             </span>
             <span className="text-xl font-bold">DukaVerse</span>
@@ -196,7 +191,8 @@ function AuthContent() {
 
           {/* Mode tabs */}
           {mode !== "forgot" && (
-            <div className="flex rounded-lg p-1 gap-1 mb-6" style={{ background: "var(--navy-700)" }}>
+            <div className="flex rounded-lg p-1 gap-1 mb-6"
+              style={{ background: "var(--navy-700)" }}>
               {(["login", "register"] as const).map(m => (
                 <button key={m} onClick={() => switchMode(m)}
                   className="flex-1 rounded-md py-2.5 text-sm font-semibold transition-all"
@@ -209,7 +205,7 @@ function AuthContent() {
             </div>
           )}
 
-          {/* Back button for forgot */}
+          {/* Back for forgot */}
           {mode === "forgot" && (
             <button onClick={() => { switchMode("login"); setFpStep("email"); setFpEmail(""); setFpQuestion(null); setFpAnswer(""); setFpNewPw(""); }}
               className="flex items-center gap-1.5 mb-6 text-sm"
@@ -218,17 +214,17 @@ function AuthContent() {
             </button>
           )}
 
-          {/* Step indicator for register */}
-          {mode === "register" && steps.length > 0 && (
+          {/* Step indicator — register only */}
+          {mode === "register" && (
             <div className="flex items-center gap-2 mb-6">
               {steps.map((label, i) => {
                 const n = i + 1;
-                const done = step > n;
+                const done   = step > n;
                 const active = step === n;
                 return (
-                  <div key={label} className="flex items-center gap-2">
+                  <div key={label} className="flex items-center gap-2 flex-1">
                     <div className="flex items-center gap-1.5">
-                      <div className="grid size-6 place-items-center rounded-full text-xs font-bold"
+                      <div className="grid size-6 place-items-center rounded-full text-xs font-bold flex-shrink-0"
                         style={{
                           background: done ? "var(--success)" : active ? "var(--navy-700)" : "var(--border)",
                           color: done || active ? "#fff" : "var(--text-muted)",
@@ -241,7 +237,7 @@ function AuthContent() {
                       </span>
                     </div>
                     {i < steps.length - 1 && (
-                      <div className="h-px flex-1 min-w-[20px]"
+                      <div className="h-px flex-1"
                         style={{ background: step > n ? "var(--success)" : "var(--border)" }} />
                     )}
                   </div>
@@ -250,7 +246,7 @@ function AuthContent() {
             </div>
           )}
 
-          {/* Error banner */}
+          {/* Error */}
           {error && (
             <div className="mb-5 flex items-center gap-3 rounded-lg px-4 py-3"
               style={{ background: "var(--danger-bg)", border: "1px solid #FECACA" }}>
@@ -267,39 +263,42 @@ function AuthContent() {
                 Sign in to your business account.
               </p>
               <form onSubmit={handleLogin} className="space-y-4">
-                <TF label="Email address" type="email" placeholder="you@email.com" value={email} onChange={setEmail} />
-                <p className="text-xs -mt-2" style={{ color: "var(--text-muted)" }}>
-                  Registration requires an email address.
-                </p>
+                <TF label="Email address" type="email" placeholder="you@email.com"
+                  value={email} onChange={setEmail} />
                 <PwF label="Password" value={password} onChange={setPassword}
-                  show={showPw} onToggle={() => setShowPw(!showPw)} placeholder="Your password" />
-                <button type="submit" disabled={pending} className="btn-gold w-full justify-center py-3">
+                  show={showPw} onToggle={() => setShowPw(!showPw)}
+                  placeholder="Your password" />
+                <button type="submit" disabled={pending}
+                  className="btn-gold w-full justify-center py-3">
                   {pending ? <Loader2 size={17} className="animate-spin" /> : <>Sign in <ArrowRight size={16} /></>}
                 </button>
                 <button type="button" onClick={() => switchMode("forgot")}
-                  className="w-full text-sm text-center" style={{ color: "var(--gold-500)" }}>
+                  className="w-full text-sm text-center pt-1"
+                  style={{ color: "var(--gold-500)" }}>
                   Forgot password?
                 </button>
               </form>
             </>
           )}
 
-          {/* ══ REGISTER STEP 1 — Account details ══ */}
+          {/* ══ REGISTER STEP 1 — Account ══ */}
           {mode === "register" && step === 1 && (
             <>
-              <h1 className="text-2xl font-bold mb-1">Your account</h1>
-              <p className="text-sm mb-6" style={{ color: "var(--text-muted)" }}>14 days free, no credit card required.</p>
+              <h1 className="text-2xl font-bold mb-1">Create your account</h1>
+              <p className="text-sm mb-6" style={{ color: "var(--text-muted)" }}>
+                14 days free, no credit card required.
+              </p>
               <form onSubmit={handleStep1} className="space-y-4">
-                <TF label="Full name" placeholder="e.g. David Mbazza" value={fullName} onChange={setFullName} />
-                <TF label="Email address" type="email" placeholder="you@email.com" value={email} onChange={setEmail} />
-                <p className="text-xs -mt-2" style={{ color: "var(--text-muted)" }}>
-                  Registration requires an email address.
-                </p>
+                <TF label="Full name" placeholder="e.g. David Mbazza"
+                  value={fullName} onChange={setFullName} />
+                <TF label="Email address" type="email" placeholder="you@email.com"
+                  value={email} onChange={setEmail} />
                 <PwF label="Password" value={password} onChange={setPassword}
                   show={showPw} onToggle={() => setShowPw(!showPw)}
                   placeholder="At least 8 characters" hint="Minimum 8 characters" />
                 <PwF label="Confirm password" value={confirm} onChange={setConfirm}
-                  show={showPw} onToggle={() => setShowPw(!showPw)} placeholder="Re-enter password" />
+                  show={showPw} onToggle={() => setShowPw(!showPw)}
+                  placeholder="Re-enter password" />
                 <button type="submit" className="btn-gold w-full justify-center py-3">
                   Continue <ArrowRight size={16} />
                 </button>
@@ -307,19 +306,22 @@ function AuthContent() {
             </>
           )}
 
-          {/* ══ REGISTER STEP 2 — Business details ══ */}
+          {/* ══ REGISTER STEP 2 — Business ══ */}
           {mode === "register" && step === 2 && (
             <>
               <h1 className="text-2xl font-bold mb-1">Your business</h1>
-              <p className="text-sm mb-6" style={{ color: "var(--text-muted)" }}>Your first branch is created automatically.</p>
+              <p className="text-sm mb-6" style={{ color: "var(--text-muted)" }}>
+                Your first branch will be created automatically.
+              </p>
               <form onSubmit={handleStep2} className="space-y-4">
-                <TF label="Business name" placeholder="e.g. Safari Corner Bar" value={biz.name}
-                  onChange={v => setBiz(b => ({ ...b, name: v }))} />
+                <TF label="Business name" placeholder="e.g. Safari Corner Bar"
+                  value={biz.name} onChange={v => setBiz(b => ({ ...b, name: v }))} />
                 <div>
                   <label className="form-label">Business type</label>
                   <select className="dv-select" value={biz.type}
                     onChange={e => setBiz(b => ({ ...b, type: e.target.value }))}>
-                    {["Bar","Grocery","Mini-market","Retail shop","Other"].map(t => <option key={t}>{t}</option>)}
+                    {["Bar","Grocery","Mini-market","Retail shop","Other"].map(t =>
+                      <option key={t}>{t}</option>)}
                   </select>
                 </div>
                 <div>
@@ -342,13 +344,19 @@ function AuthContent() {
                 )}
                 {biz.district && (
                   <div>
-                    <label className="form-label">Ward / Street <span style={{ color: "var(--text-muted)", fontWeight: 400 }}>(optional)</span></label>
+                    <label className="form-label">
+                      Ward / Street{" "}
+                      <span style={{ color: "var(--text-muted)", fontWeight: 400 }}>(optional)</span>
+                    </label>
                     <input className="dv-input" placeholder="e.g. Kariakoo, Msasani…"
                       value={biz.ward} onChange={e => setBiz(b => ({ ...b, ward: e.target.value }))} />
                   </div>
                 )}
                 <div className="flex gap-3">
-                  <button type="button" onClick={() => setStep(1)} className="btn-ghost px-6">Back</button>
+                  <button type="button" onClick={() => { setStep(1); setError(null); }}
+                    className="btn-ghost px-6">
+                    <ChevronLeft size={16} /> Back
+                  </button>
                   <button type="submit" className="btn-gold flex-1 justify-center py-3">
                     Continue <ArrowRight size={16} />
                   </button>
@@ -362,28 +370,36 @@ function AuthContent() {
             <>
               <h1 className="text-2xl font-bold mb-1">Security question</h1>
               <p className="text-sm mb-6" style={{ color: "var(--text-muted)" }}>
-                Used to verify your identity if you forget your password. Remember your answer exactly.
+                Used to verify your identity if you forget your password.
+                Remember your answer exactly.
               </p>
               <form onSubmit={handleRegister} className="space-y-4">
                 <div>
                   <label className="form-label">Security question</label>
-                  <select className="dv-select" value={secQ} onChange={e => setSecQ(e.target.value)}>
+                  <select className="dv-select" value={secQ}
+                    onChange={e => setSecQ(e.target.value)}>
                     {SECURITY_QUESTIONS.map(q => <option key={q} value={q}>{q}</option>)}
                   </select>
                 </div>
                 <div>
                   <label className="form-label">Your answer</label>
                   <input required className="dv-input" placeholder="Enter your answer"
-                    value={secA} onChange={e => setSecA(e.target.value)} />
+                    value={secA} onChange={e => setSecA(e.target.value)}
+                    autoComplete="off" />
                   <p className="text-xs mt-1" style={{ color: "var(--text-muted)" }}>
-                    Answer is case-insensitive. Store it somewhere safe.
+                    Answer is not case-sensitive. Keep it somewhere safe.
                   </p>
                 </div>
                 <div className="flex gap-3">
-                  <button type="button" onClick={() => setStep(2)} className="btn-ghost px-6">Back</button>
+                  <button type="button" onClick={() => { setStep(2); setError(null); }}
+                    className="btn-ghost px-6">
+                    <ChevronLeft size={16} /> Back
+                  </button>
                   <button type="submit" disabled={pending}
                     className="btn-gold flex-1 justify-center py-3">
-                    {pending ? <Loader2 size={17} className="animate-spin" /> : "Create account & start trial"}
+                    {pending
+                      ? <Loader2 size={17} className="animate-spin" />
+                      : "Create account"}
                   </button>
                 </div>
               </form>
@@ -397,12 +413,13 @@ function AuthContent() {
                 <>
                   <h1 className="text-2xl font-bold mb-1">Reset password</h1>
                   <p className="text-sm mb-6" style={{ color: "var(--text-muted)" }}>
-                    Enter your email and we'll show your security question.
+                    Enter your email — we'll show your security question.
                   </p>
                   <form onSubmit={handleFpEmail} className="space-y-4">
                     <TF label="Email address" type="email" placeholder="you@email.com"
                       value={fpEmail} onChange={setFpEmail} />
-                    <button type="submit" disabled={pending} className="btn-gold w-full justify-center py-3">
+                    <button type="submit" disabled={pending}
+                      className="btn-gold w-full justify-center py-3">
                       {pending ? <Loader2 size={17} className="animate-spin" /> : <>Continue <ArrowRight size={16} /></>}
                     </button>
                   </form>
@@ -418,15 +435,18 @@ function AuthContent() {
                   <form onSubmit={handleFpReset} className="space-y-4">
                     <div className="rounded-lg px-4 py-3"
                       style={{ background: "var(--gold-100)", border: "1px solid var(--gold-300)" }}>
-                      <p className="text-xs font-semibold mb-1" style={{ color: "var(--text-muted)" }}>Security question</p>
-                      <p className="text-sm font-medium" style={{ color: "var(--navy-700)" }}>{fpQuestion}</p>
+                      <p className="text-xs font-semibold mb-1"
+                        style={{ color: "var(--text-muted)" }}>Security question</p>
+                      <p className="text-sm font-medium"
+                        style={{ color: "var(--navy-700)" }}>{fpQuestion}</p>
                     </div>
                     <TF label="Your answer" placeholder="Enter your answer"
                       value={fpAnswer} onChange={setFpAnswer} />
                     <PwF label="New password" value={fpNewPw} onChange={setFpNewPw}
                       show={showPw} onToggle={() => setShowPw(!showPw)}
                       placeholder="At least 8 characters" hint="Minimum 8 characters" />
-                    <button type="submit" disabled={pending} className="btn-gold w-full justify-center py-3">
+                    <button type="submit" disabled={pending}
+                      className="btn-gold w-full justify-center py-3">
                       {pending ? <Loader2 size={17} className="animate-spin" /> : "Set new password"}
                     </button>
                   </form>
@@ -434,18 +454,23 @@ function AuthContent() {
               )}
 
               {fpStep === "done" && (
-                <div className="text-center py-6">
-                  <div className="mx-auto mb-4 grid size-14 place-items-center rounded-full"
+                <div className="text-center py-8">
+                  <div className="mx-auto mb-4 grid size-16 place-items-center rounded-full"
                     style={{ background: "var(--success-bg)" }}>
-                    <Check size={28} style={{ color: "var(--success)" }} />
+                    <Check size={30} style={{ color: "var(--success)" }} />
                   </div>
-                  <h2 className="text-xl font-bold mb-2">Password updated!</h2>
+                  <h2 className="text-xl font-bold mb-2">Password updated</h2>
                   <p className="text-sm mb-6" style={{ color: "var(--text-muted)" }}>
-                    Your password has been reset. Sign in with your new password.
+                    Your password has been reset successfully.
                   </p>
                   <button className="btn-gold w-full justify-center py-3"
-                    onClick={() => { switchMode("login"); setFpStep("email"); setFpEmail(""); setFpQuestion(null); }}>
-                    Go to sign in
+                    onClick={() => {
+                      switchMode("login");
+                      setFpStep("email");
+                      setFpEmail("");
+                      setFpQuestion(null);
+                    }}>
+                    Sign in now
                   </button>
                 </div>
               )}
@@ -457,25 +482,7 @@ function AuthContent() {
   );
 }
 
-// ── Shared field components ────────────────────────────────────────────────────
-type Field2 = "email" | "mobile";
-
-function FieldToggle({ value, onChange }: { value: Field2; onChange: (v: Field2) => void }) {
-  return (
-    <div className="grid grid-cols-2 gap-2">
-      {(["email", "mobile"] as Field2[]).map(f => (
-        <button key={f} type="button" onClick={() => onChange(f)}
-          className="rounded-lg border py-2.5 text-sm font-semibold transition-colors"
-          style={value === f
-            ? { background: "var(--navy-700)", borderColor: "var(--navy-700)", color: "#fff" }
-            : { background: "var(--surface)", borderColor: "var(--border)", color: "var(--text-secondary)" }}>
-          {f === "email" ? "Email" : "Mobile"}
-        </button>
-      ))}
-    </div>
-  );
-}
-
+// ── Field components ──────────────────────────────────────────────────────────
 function TF({ label, placeholder, type = "text", value, onChange }: {
   label: string; placeholder: string; type?: string;
   value: string; onChange: (v: string) => void;
@@ -498,7 +505,8 @@ function PwF({ label, placeholder, hint, value, onChange, show, onToggle }: {
     <div>
       <div className="flex items-center justify-between mb-1.5">
         <label className="form-label mb-0">{label}</label>
-        <button type="button" onClick={onToggle} className="flex items-center gap-1 text-xs"
+        <button type="button" onClick={onToggle}
+          className="flex items-center gap-1 text-xs"
           style={{ color: "var(--text-muted)" }}>
           {show ? <EyeOff size={13} /> : <Eye size={13} />}
           {show ? "Hide" : "Show"}
@@ -507,24 +515,6 @@ function PwF({ label, placeholder, hint, value, onChange, show, onToggle }: {
       <input required type={show ? "text" : "password"} placeholder={placeholder}
         className="dv-input" value={value} onChange={e => onChange(e.target.value)} />
       {hint && <p className="text-xs mt-1" style={{ color: "var(--text-muted)" }}>{hint}</p>}
-    </div>
-  );
-}
-
-function MobileF({ cc, mobile, onCc, onMobile }: {
-  cc: string; mobile: string; onCc: (v: string) => void; onMobile: (v: string) => void;
-}) {
-  return (
-    <div>
-      <label className="form-label">Mobile number</label>
-      <div className="grid gap-2" style={{ gridTemplateColumns: "5.5rem 1fr" }}>
-        <input required aria-label="Country code" className="dv-input text-center"
-          inputMode="tel" placeholder="+255" value={cc}
-          onChange={e => onCc(e.target.value.startsWith("+") ? e.target.value : `+${e.target.value}`)} />
-        <input required aria-label="Mobile number" className="dv-input"
-          inputMode="numeric" placeholder="7xx xxx xxx" value={mobile}
-          onChange={e => onMobile(e.target.value)} />
-      </div>
     </div>
   );
 }
