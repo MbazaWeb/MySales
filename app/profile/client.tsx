@@ -6,7 +6,7 @@ import {
   MessageSquareText, Plus, ShieldCheck, UserPlus, X, Loader2,
   AlertCircle, Copy, CheckCheck, KeyRound, Shield,
 } from "lucide-react";
-import { addBranchWithStaff, signOut } from "@/lib/supabase/server-actions";
+import { addBranchWithStaff, signOut, createCheckoutSession } from "@/lib/supabase/server-actions";
 import type { User } from "@supabase/supabase-js";
 
 type Business = { id: string; name: string; type: string };
@@ -15,13 +15,6 @@ type StaffRow = { id: string; name: string; role: string; branch_id: string | nu
 
 type NewCredentials = { name: string; email: string; password: string; role: string };
 
-const PLANS = [
-  { period: "Monthly",  price: "TZS 15,000", note: "/ month",    best: false },
-  { period: "3 months", price: "TZS 40,000", note: "save 11%",   best: false },
-  { period: "6 months", price: "TZS 75,000", note: "save 17%",   best: false },
-  { period: "Yearly",   price: "TZS 140,000",note: "best value", best: true  },
-];
-
 const ROLES = ["Manager", "Cashier", "Stock keeper"] as const;
 
 function genPassword() {
@@ -29,13 +22,18 @@ function genPassword() {
   return Array.from({ length: 12 }, () => chars[Math.floor(Math.random() * chars.length)]).join("");
 }
 
+
+
 export default function ProfileClient({
   user, businesses, branches: initialBranches, staff: initialStaff,
+  trialEndsAt, subscription,
 }: {
-  user:       User;
-  businesses: Business[];
-  branches:   Branch[];
-  staff:      StaffRow[];
+  user:         User;
+  businesses:   Business[];
+  branches:     Branch[];
+  staff:        StaffRow[];
+  trialEndsAt:  string | null;
+  subscription: Record<string,any> | null;
 }) {
   const fullName = (user.user_metadata?.full_name as string) ?? "—";
   const email    = user.email ?? "—";
@@ -316,7 +314,7 @@ export default function ProfileClient({
           </section>
 
           {/* Plans */}
-          <SubscriptionPlans businesses={businesses} />
+          <SubscriptionPlans businesses={businesses} trialEndsAt={trialEndsAt} subscription={subscription} />
         </div>
       </div>
 
@@ -497,51 +495,158 @@ export default function ProfileClient({
   );
 }
 
-// ── Subscription Plans component ──────────────────────────────────────────────
-function SubscriptionPlans({ businesses }: { businesses: Business[] }) {
-  const [selected, setSelected]   = useState<string | null>(null);
-  const [bizId, setBizId]         = useState(businesses[0]?.id ?? "");
-  const [payError, setPayError]   = useState<string | null>(null);
-  const [paying, startPay]        = useTransition();
 
-  const plans = [
-    { key: "monthly",   period: "Monthly",  price: "TZS 15,000", note: "/ month",    best: false },
-    { key: "quarterly", period: "3 months", price: "TZS 40,000", note: "save 11%",   best: false },
-    { key: "biannual",  period: "6 months", price: "TZS 75,000", note: "save 17%",   best: false },
-    { key: "yearly",    period: "Yearly",   price: "TZS 140,000",note: "best value", best: true  },
-  ];
+// ── Subscription Plans component ──────────────────────────────────────────────
+
+const PLANS = [
+  { key: "monthly",   period: "Monthly",   price: "TZS 15,000",  amount: 15000,  note: "per month",   months: 1,  best: false },
+  { key: "quarterly", period: "3 months",  price: "TZS 40,000",  amount: 40000,  note: "save 11%",    months: 3,  best: false },
+  { key: "biannual",  period: "6 months",  price: "TZS 75,000",  amount: 75000,  note: "save 17%",    months: 6,  best: false },
+  { key: "yearly",    period: "Yearly",    price: "TZS 140,000", amount: 140000, note: "best value",  months: 12, best: true  },
+];
+
+function money(n: number) { return `TZS ${n.toLocaleString("en-TZ")}`; }
+
+function SubscriptionPlans({
+  businesses, trialEndsAt, subscription,
+}: {
+  businesses:   Business[];
+  trialEndsAt:  string | null;
+  subscription: Record<string,any> | null;
+}) {
+  const [selected,  setSelected]  = useState<string | null>(null);
+  const [bizId,     setBizId]     = useState(businesses[0]?.id ?? "");
+  const [payError,  setPayError]  = useState<string | null>(null);
+  const [payInfo,   setPayInfo]   = useState<string | null>(null);
+  const [paying,    startPay]     = useTransition();
+
+  // Compute trial status
+  const now           = new Date();
+  const trialEnd      = trialEndsAt ? new Date(trialEndsAt) : null;
+  const trialDays     = trialEnd ? Math.ceil((trialEnd.getTime() - now.getTime()) / 86400000) : 0;
+  const trialActive   = trialDays > 0;
+  const isSubscribed  = !!subscription;
 
   function handlePay(e: React.FormEvent) {
     e.preventDefault();
-    if (!selected) return;
+    if (!selected || !bizId) return;
     setPayError(null);
+    setPayInfo(null);
     const fd = new FormData();
     fd.append("plan",        selected);
     fd.append("business_id", bizId);
     startPay(async () => {
-      // This would call createCheckoutSession if implemented
-      // For now, show a message
-      setPayError("Payment integration coming soon. Please contact support.");
+      const res = await createCheckoutSession(fd);
+      if ("error" in res && res.error) { setPayError(res.error); return; }
+
+      const url = (res as any).redirect_url ?? (res as any).payment_link;
+      if (!url) { setPayError("Could not start payment. Please try again."); return; }
+
+      // Dev mode — show info instead of redirect
+      if ((res as any).mock) {
+        setPayInfo("Dev mode: no Pesapal keys configured. Add PESAPAL_CONSUMER_KEY to activate live payments.");
+        // Still redirect so the full flow can be tested
+        window.location.href = url;
+        return;
+      }
+
+      // Live mode — redirect to Pesapal hosted checkout
+      window.location.href = url;
     });
   }
+
+  const selectedPlan = PLANS.find(p => p.key === selected);
 
   return (
     <section className="dv-card">
       <h2 className="flex items-center gap-2 font-semibold mb-1">
         <Crown size={17} style={{ color: "var(--gold-500)" }} />
-        Subscription plans
+        Subscription
       </h2>
-      <p className="text-xs mb-4" style={{ color: "var(--text-muted)" }}>
-        Subscribe to keep your account active after the trial.
-      </p>
 
-      {payError && (
-        <div className="mb-4 flex items-center gap-2 rounded-lg px-3 py-2.5 text-sm"
-          style={{ background: "var(--danger-bg)", color: "var(--danger)", border: "1px solid #FECACA" }}>
-          <AlertCircle size={14} /> {payError}
+      {/* ── Current status card ── */}
+      {isSubscribed ? (
+        <div className="mb-5 rounded-xl px-4 py-4"
+          style={{ background: "var(--success-bg)", border: "1px solid #BBF7D0" }}>
+          <div className="flex items-center justify-between gap-3">
+            <div>
+              <p className="text-xs font-semibold" style={{ color: "var(--success)" }}>Active subscription</p>
+              <p className="text-lg font-bold mt-0.5" style={{ color: "var(--text-primary)" }}>
+                {subscription!.billing_interval}
+              </p>
+              <p className="text-xs mt-1" style={{ color: "var(--text-muted)" }}>
+                {money(subscription!.amount_tzs)} · via {subscription!.provider}
+              </p>
+            </div>
+            <div className="text-right">
+              <p className="text-xs" style={{ color: "var(--text-muted)" }}>Expires</p>
+              <p className="text-sm font-semibold" style={{ color: "var(--text-primary)" }}>
+                {new Date(subscription!.ends_at).toLocaleDateString("en-TZ", {
+                  day: "numeric", month: "short", year: "numeric",
+                })}
+              </p>
+              <p className="text-xs mt-0.5" style={{ color: "var(--success)", fontWeight: 600 }}>
+                {Math.ceil((new Date(subscription!.ends_at).getTime() - now.getTime()) / 86400000)} days left
+              </p>
+            </div>
+          </div>
+          <p className="text-xs mt-3" style={{ color: "var(--success)" }}>
+            Renew early to extend your access.
+          </p>
+        </div>
+      ) : trialActive ? (
+        <div className="mb-5 rounded-xl px-4 py-3"
+          style={{ background: trialDays <= 3 ? "var(--danger-bg)" : "var(--warning-bg)", border: `1px solid ${trialDays <= 3 ? "#FECACA" : "#FDE68A"}` }}>
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-xs font-semibold" style={{ color: trialDays <= 3 ? "var(--danger)" : "var(--warning)" }}>
+                Free trial active
+              </p>
+              <p className="text-lg font-bold" style={{ color: "var(--text-primary)" }}>
+                {trialDays === 1 ? "1 day" : `${trialDays} days`} remaining
+              </p>
+            </div>
+            <div className="text-right text-xs" style={{ color: "var(--text-muted)" }}>
+              <p>Expires</p>
+              <p className="font-semibold" style={{ color: "var(--text-primary)" }}>
+                {trialEnd?.toLocaleDateString("en-TZ", { day: "numeric", month: "short" })}
+              </p>
+            </div>
+          </div>
+          <p className="text-xs mt-2" style={{ color: trialDays <= 3 ? "var(--danger)" : "var(--warning)" }}>
+            {trialDays <= 3 ? "Trial ending soon — subscribe now to avoid losing access." : "Subscribe before your trial ends to keep all features."}
+          </p>
+        </div>
+      ) : (
+        <div className="mb-5 rounded-xl px-4 py-3"
+          style={{ background: "var(--danger-bg)", border: "1px solid #FECACA" }}>
+          <p className="text-xs font-semibold" style={{ color: "var(--danger)" }}>Trial expired</p>
+          <p className="text-sm mt-1" style={{ color: "var(--danger)" }}>
+            Subscribe now to restore full access to your account.
+          </p>
         </div>
       )}
 
+      <p className="text-xs mb-4" style={{ color: "var(--text-muted)" }}>
+        {isSubscribed ? "Renew or upgrade your plan." : "Choose a plan to continue after your trial."}
+      </p>
+
+      {/* Error / info */}
+      {payError && (
+        <div className="mb-4 flex items-center gap-2 rounded-lg px-3 py-2.5"
+          style={{ background: "var(--danger-bg)", border: "1px solid #FECACA" }}>
+          <AlertCircle size={14} style={{ color: "var(--danger)", flexShrink: 0 }} />
+          <p className="text-sm" style={{ color: "var(--danger)" }}>{payError}</p>
+        </div>
+      )}
+      {payInfo && (
+        <div className="mb-4 rounded-lg px-3 py-2.5"
+          style={{ background: "var(--gold-100)", border: "1px solid var(--gold-300)" }}>
+          <p className="text-xs font-semibold" style={{ color: "var(--navy-700)" }}>{payInfo}</p>
+        </div>
+      )}
+
+      {/* Business selector */}
       {businesses.length > 1 && (
         <div className="mb-4">
           <label className="form-label">Business</label>
@@ -551,60 +656,85 @@ function SubscriptionPlans({ businesses }: { businesses: Business[] }) {
         </div>
       )}
 
+      {/* Plan cards */}
       <div className="grid grid-cols-2 gap-3 mb-4">
-        {plans.map(p => (
-          <button key={p.key} type="button"
-            onClick={() => setSelected(p.key)}
-            className="rounded-xl p-3.5 text-left transition-all"
-            style={{
-              border:     selected === p.key ? "2px solid var(--navy-700)"
-                          : p.best ? "2px solid var(--gold-500)"
-                          : "1px solid var(--border)",
-              background: selected === p.key ? "var(--navy-700)"
-                          : p.best ? "var(--gold-100)"
-                          : "var(--surface)",
-            }}>
-            <b className="block text-xs font-semibold"
-              style={{ color: selected === p.key ? "rgba(255,255,255,0.6)" : "var(--text-muted)" }}>
-              {p.period}
-            </b>
-            <strong className="mt-1.5 block text-base font-bold"
-              style={{ color: selected === p.key ? "#fff" : "var(--text-primary)" }}>
-              {p.price}
-            </strong>
-            <span className="text-xs"
-              style={{ color: selected === p.key ? "rgba(255,255,255,0.5)" : p.best ? "var(--gold-500)" : "var(--text-muted)" }}>
-              {p.note}
-            </span>
-            {p.best && selected !== p.key && (
-              <span className="mt-2 flex items-center gap-1 text-xs font-bold" style={{ color: "var(--navy-700)" }}>
-                <Check size={12} /> Recommended
+        {PLANS.map(p => {
+          const isSelected = selected === p.key;
+          return (
+            <button key={p.key} type="button" onClick={() => setSelected(p.key)}
+              className="rounded-xl p-3.5 text-left transition-all"
+              style={{
+                border:     isSelected ? "2px solid var(--navy-700)"
+                            : p.best   ? "2px solid var(--gold-500)"
+                            : "1px solid var(--border)",
+                background: isSelected ? "var(--navy-700)"
+                            : p.best   ? "var(--gold-100)"
+                            : "var(--surface)",
+              }}>
+              <b className="block text-xs font-semibold"
+                style={{ color: isSelected ? "rgba(255,255,255,0.6)" : "var(--text-muted)" }}>
+                {p.period}
+              </b>
+              <strong className="mt-1.5 block text-base font-bold"
+                style={{ color: isSelected ? "#fff" : "var(--text-primary)" }}>
+                {p.price}
+              </strong>
+              <span className="text-xs"
+                style={{ color: isSelected ? "rgba(255,255,255,0.5)" : p.best ? "var(--gold-500)" : "var(--text-muted)" }}>
+                {p.note}
               </span>
-            )}
-            {selected === p.key && (
-              <span className="mt-2 flex items-center gap-1 text-xs font-bold text-white">
-                <Check size={12} /> Selected
-              </span>
-            )}
-          </button>
-        ))}
+              {isSelected && (
+                <span className="mt-1.5 flex items-center gap-1 text-xs font-bold text-white">
+                  <Check size={11} /> Selected
+                </span>
+              )}
+            </button>
+          );
+        })}
       </div>
 
+      {/* Savings callout when a plan is selected */}
+      {selectedPlan && (
+        <div className="mb-4 rounded-lg px-3 py-2.5 flex items-center justify-between"
+          style={{ background: "var(--gold-100)", border: "1px solid var(--gold-300)" }}>
+          <span className="text-xs font-medium" style={{ color: "var(--navy-700)" }}>
+            {selectedPlan.period} · {selectedPlan.months} {selectedPlan.months === 1 ? "month" : "months"}
+          </span>
+          <span className="text-sm font-bold" style={{ color: "var(--navy-700)" }}>
+            {selectedPlan.price}
+          </span>
+        </div>
+      )}
+
+      {/* Pay button */}
       <form onSubmit={handlePay}>
         <button type="submit" disabled={!selected || paying}
           className="btn-gold w-full justify-center py-3"
           style={!selected ? { opacity: 0.5, cursor: "not-allowed" } : {}}>
           {paying
-            ? <><Loader2 size={17} className="animate-spin" /> Processing…</>
+            ? <><Loader2 size={17} className="animate-spin" /> Redirecting to payment…</>
             : selected
-            ? `Subscribe — ${plans.find(p => p.key === selected)?.price}`
+            ? `Pay ${selectedPlan?.price} via Pesapal`
             : "Select a plan to continue"}
         </button>
       </form>
 
-      <p className="text-xs mt-3 text-center" style={{ color: "var(--text-muted)" }}>
-        Pesapal · M-Pesa TZ, Airtel Money, Tigo Pesa, Halo Pesa, card
-      </p>
+      {/* Payment methods */}
+      <div className="mt-4 rounded-lg px-3 py-3"
+        style={{ background: "var(--background)", border: "1px solid var(--border)" }}>
+        <p className="text-xs font-semibold mb-2" style={{ color: "var(--text-muted)" }}>Accepted payment methods</p>
+        <div className="flex flex-wrap gap-2">
+          {["M-Pesa TZ", "Airtel Money", "Tigo Pesa", "Halo Pesa", "Visa/Mastercard"].map(pm => (
+            <span key={pm} className="text-xs font-medium px-2.5 py-1 rounded-full"
+              style={{ background: "var(--surface)", border: "1px solid var(--border)", color: "var(--text-secondary)" }}>
+              {pm}
+            </span>
+          ))}
+        </div>
+        <p className="text-xs mt-2" style={{ color: "var(--text-muted)" }}>
+          Powered by Pesapal · Secure checkout
+        </p>
+      </div>
     </section>
   );
 }

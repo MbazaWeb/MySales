@@ -872,3 +872,21 @@ export async function resetPasswordWithAnswer(formData: FormData) {
 
   return { success: true };
 }
+
+// ── Get active subscription for a business ────────────────────────────────────
+export async function getActiveSubscription(businessId: string) {
+  const supabase = await createClient();
+  const now = new Date().toISOString();
+
+  const { data } = await supabase
+    .from("subscriptions")
+    .select("id, billing_interval, status, amount_tzs, starts_at, ends_at, provider")
+    .eq("business_id", businessId)
+    .eq("status", "Active")
+    .gt("ends_at", now)
+    .order("ends_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  return data ?? null;
+}
